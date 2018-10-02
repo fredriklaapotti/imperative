@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DebugFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+
+    <EditText
+        android:id="@+id/debugFragmentText"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:ems="6"
+        android:inputType="textMultiLine"
+        android:gravity="top|left"
+        android:textSize="14dp"
+        android:singleLine="false" />
+</FrameLayout>

@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "668055463929",
+    "firebase_url": "https://personal-vps-217615.firebaseio.com",
+    "project_id": "personal-vps-217615",
+    "storage_bucket": "personal-vps-217615.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:668055463929:android:f2451dff9e2b2e0b",
+        "android_client_info": {
+          "package_name": "com.step84.imperative"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "668055463929-e80l80qb7k8vcp2qq9qfh04m4c9eiadh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.step84.imperative",
+            "certificate_hash": "fa00c1bf250ef2a2ce27e86dde8c1ab05eb26fcf"
+          }
+        },
+        {
+          "client_id": "668055463929-i868prp4rcksvkcb95u3lgierb5gf0tu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgbIbPaGjGC07XVTF9xvPItC2UqfbQaCA"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "668055463929-i868prp4rcksvkcb95u3lgierb5gf0tu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
