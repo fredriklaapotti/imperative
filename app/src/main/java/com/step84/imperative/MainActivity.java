@@ -83,6 +83,11 @@ public class MainActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        /* --- START INTENT SECTION --- */
+        Intent intent = new Intent(this, AlarmService.class);
+        startService(intent);
+        /* --- END INTENT SECTION --- */
+
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
         HomeFragment homeFragment = new HomeFragment();
         switchFragment(homeFragment);
