@@ -6,10 +6,40 @@
     tools:context=".ZonesFragment">
 
     <!-- TODO: Update blank fragment layout -->
-    <TextView
-        android:id="@+id/fragmentZonesTextView"
+
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="Fragment zones" />
+        android:layout_height="match_parent">
+
+        <Button
+            android:id="@+id/btn_disableAlarm"
+            android:layout_width="142dp"
+            android:layout_height="65dp"
+            android:layout_below="@+id/fragmentZonesTextView"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="118dp"
+            android:layout_marginTop="168dp"
+            android:text="Disable alarm" />
+
+        <TextView
+            android:id="@+id/fragmentZonesTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="0dp"
+            android:text="Fragment zones" />
+
+        <Button
+            android:id="@+id/btn_enableAlarm"
+            android:layout_width="142dp"
+            android:layout_height="65dp"
+            android:layout_below="@+id/fragmentZonesTextView"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="117dp"
+            android:layout_marginTop="99dp"
+            android:text="Enable alarm" />
+    </RelativeLayout>
 
 </FrameLayout>

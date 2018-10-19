@@ -1,13 +1,25 @@
 package com.step84.imperative;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
@@ -23,6 +35,10 @@ public class SettingsFragment extends Fragment {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+
+    FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+    private static String TAG = "SettingsFragment";
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -67,6 +83,38 @@ public class SettingsFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
         TextView tv = v.findViewById(R.id.fragmentSettingsTextView);
         tv.setText("Settingsfragmentet");
+
+        EditText txt_email = v.findViewById(R.id.txt_email);
+        TextView txt_token = v.findViewById(R.id.txt_token);
+
+        // Obviously we should fetch this from database or local storage first
+        txt_email.setText("fredrik.laapotti@gmail.com");
+
+        // --------------------------- START SHARED PREFERENCES -------------
+        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        final SharedPreferences.Editor editor = sharedPreferences.edit();
+        String token = sharedPreferences.getString("token","-1");
+        Log.d(TAG,"Shared preferences token: " + token);
+        txt_token.setText(token);
+        // --------------------------- END SHARED PREFERENCES -------------
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("email", txt_email.getText().toString());
+        Log.d(TAG,"txt_email value: " + txt_email.getText());
+
+        db.collection("users")
+        .add(userInfo)
+        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+            @Override
+            public void onSuccess(DocumentReference documentReference) {
+                    Log.d(TAG, "Snapshot written with id:" + documentReference.getId());
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.d("MINDEBUG", "Error adding document");
+            }
+        });
         return v;
     }
 

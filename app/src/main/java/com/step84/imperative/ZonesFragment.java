@@ -1,13 +1,33 @@
 package com.step84.imperative;
 
 import android.content.Context;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.RemoteMessage;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nullable;
 
 
 /**
@@ -19,10 +39,15 @@ import android.widget.TextView;
  * create an instance of this fragment.
  */
 public class ZonesFragment extends Fragment {
+
+    private static String SENDER_ID = "668055463929";
+    FirebaseFirestore db = FirebaseFirestore.getInstance();
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+
+    private static final String TAG = "ZonesFragment";
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -65,8 +90,100 @@ public class ZonesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_zones, container, false);
-        TextView tv = v.findViewById(R.id.fragmentZonesTextView);
+        final TextView tv = v.findViewById(R.id.fragmentZonesTextView);
         tv.setText("Zonesfragmentet");
+
+        final Map<String, Boolean> enableAlarm = new HashMap<>();
+
+        Button btn_enableAlarm = v.findViewById(R.id.btn_enableAlarm);
+        Button btn_disableAlarm = v.findViewById(R.id.btn_disableAlarm);
+
+        btn_enableAlarm.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                enableAlarm.put("alarm_active", true);
+
+                db.collection("users").document("zone_01")
+                        .set(enableAlarm)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                Log.d(TAG, "Document updated: " + enableAlarm);
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.d(TAG, "Document failed to update");
+                            }
+                        });
+            }
+        });
+
+        btn_disableAlarm.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                enableAlarm.put("alarm_active", false);
+
+                db.collection("users").document("zone_01")
+                        .set(enableAlarm)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                Log.d(TAG, "Document updated: " + enableAlarm);
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.d(TAG, "Document failed to update");
+                            }
+                        });
+            }
+        });
+
+        // --------------------------- START OLD FIRESTORE LOOP -------------
+
+
+
+        // Let's try another move, this one always updates to true
+        /*
+        docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+                if(e != null) {
+                    tv.setText("listen failed");
+                }
+
+                if(documentSnapshot != null && documentSnapshot.exists()) {
+                    docRef.set(map).addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            Log.d(TAG, "Document updated");
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Log.d(TAG, "Document failed to update");
+                        }
+                    });
+                } else {
+                    tv.setText("data: null");
+                }
+            }
+        });
+        */
+        // --------------------------- END FIRESTORE LOOP -------------
+
+        // Probably useless at the moment. Implement push by changing database flags in Firestore instead.
+        /*
+        AtomicInteger msgId = new AtomicInteger();
+        FirebaseMessaging fm = FirebaseMessaging.getInstance();
+        fm.send(new RemoteMessage.Builder(SENDER_ID + "@gcm.googleapis.com")
+                .setMessageId(Integer.toString(msgId.incrementAndGet()))
+                .addData("my message", "hello world")
+                .addData("my action", "SAY_HELLO")
+                .build());
+        */
         return v;
     }
 

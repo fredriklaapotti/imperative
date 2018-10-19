@@ -1,19 +1,25 @@
 package com.step84.imperative;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
@@ -21,7 +27,10 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -96,6 +105,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         final int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         // --------------------------- END AUDIO -------------
 
+        // --------------------------- START FIRESTORE LOOP -------------
         final DocumentReference docRef = db.collection("users").document("zone_01");
         docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
@@ -112,7 +122,15 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                     if(larma == "true") {
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
                         textView.append(larma);
-                        mediaPlayer.setOnCompletionListener(HomeFragment.this);
+                        mediaPlayer.setOnCompletionListener(HomeFragment.this); // This method plays alarm twice when enabled from zones fragment
+                        /*
+                        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                            @Override
+                            public void onCompletion(MediaPlayer mp) {
+                                mp.stop();
+                            }
+                        });
+                        */
                         mediaPlayer.start();
                     } else {
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
@@ -123,6 +141,54 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 }
             }
         });
+        // --------------------------- END FIRESTORE LOOP -------------
+
+        // --------------------------- START UNIT INFO -------------
+        TelephonyManager telephonyManager = (TelephonyManager) getActivity().getSystemService(Context.TELEPHONY_SERVICE);
+        //String IMEI = telephonyManager.getImei();
+        //Log.d("unit info", "Device ID, IMEI:");
+        // --------------------------- END UNIT INFO -------------
+
+        // --------------------------- START SHARED PREFERENCES -------------
+        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        final SharedPreferences.Editor editor = sharedPreferences.edit();
+        // --------------------------- END SHARED PREFERENCES -------------
+
+        /**
+         * TODO: rethink where we fetch and update the token
+         * Would probably be better to move token fetch to start of activity and monitor updates in background thread
+         */
+        // --------------------------- START FCM -------------
+        FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+            @Override
+            public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                if(!task.isSuccessful()) {
+                    Log.w("Messaging", "getInstanceId failed", task.getException());
+                }
+
+                String token = task.getResult().getToken();
+                Log.d("FCM message token", token);
+                editor.putString("token", token);
+                editor.commit();
+
+                Map<String, Object> deviceInfo = new HashMap<>();
+                deviceInfo.put("email", "fredrik.laapotti@gmail.com");
+                deviceInfo.put("FCMtoken", token);
+                deviceInfo.put("updateTimestamp", Timestamp.now());
+                db.collection("devices").add(deviceInfo).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                    @Override
+                    public void onSuccess(DocumentReference documentReference) {
+                        Log.d("MINDEBUG", "Snapshot written with id:" + documentReference.getId());
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.d("MINDEBUG", "Error adding document");
+                    }
+                });
+            }
+        });
+        // --------------------------- END FCM -------------
 
         return v;
     }
