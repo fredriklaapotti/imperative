@@ -119,6 +119,9 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         final Map<String, Boolean> enableAlarm = new HashMap<>();
 
+        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        final SharedPreferences.Editor editor = sharedPreferences.edit();
+
         Button btn_enableAlarm = v.findViewById(R.id.btn_enableAlarm);
         Button btn_disableAlarm = v.findViewById(R.id.btn_disableAlarm);
 
@@ -171,7 +174,12 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         List<String> zones = new ArrayList<>(Constants.ZONES.keySet());
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        int spinnerValue = sharedPreferences.getInt("userChoiceSpinner", -1);
+        Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
         spinner_zones.setAdapter(dataAdapter);
+        if(spinnerValue != -1) {
+            spinner_zones.setSelection(spinnerValue);
+        }
         // --- END SPINNER LOGIC ---
 
         // This method works just as well as having it in onActivityCreated
@@ -322,13 +330,11 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         LatLng home = new LatLng(57.670897, 15.860455);
-        //mMap.addMarker(new MarkerOptions().position(home).title("Marker"));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(home,15));
 
         final SharedPreferences sharedPref = getActivity().getPreferences(Context.MODE_PRIVATE);
         final SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("isMapReady", "true");
-        editor.apply();
+        editor.putString("isMapReady", "true").apply();
         Log.i(TAG, "geofence: onMapReady() in ZonesFragment");
     }
 
@@ -339,7 +345,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             mMap.clear();
             // TEST CIRCLES
             for(Map.Entry<String, LatLng> entry : Constants.ZONES.entrySet()) {
-                String key = entry.getKey();
+                //String key = entry.getKey(); // For use with marker below
                 LatLng latLng = entry.getValue();
                 //Log.i(TAG, "geofence: key = " + key + ", latlng = " + latLng.toString());
                 Circle circle = mMap.addCircle(new CircleOptions()
@@ -364,6 +370,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         final SharedPreferences.Editor editor = sharedPreferences.edit();
         String selected = parent.getItemAtPosition(pos).toString();
         editor.putString("selectedZone", selected).apply();
+        int userChoice = parent.getSelectedItemPosition();
+        editor.putInt("userChoiceSpinner", userChoice).apply();
 
         for(String topic : sharedPreferences.getAll().keySet()) {
             Log.i(TAG, "firestore: unsubscribing from: " + topic);

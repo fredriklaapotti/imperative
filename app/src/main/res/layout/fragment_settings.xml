@@ -62,5 +62,15 @@
         android:layout_marginTop="55dp"
         android:text="Set e-mail" />
 
+    <Button
+        android:id="@+id/btn_fetchToken"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txt_token"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_marginStart="2dp"
+        android:layout_marginTop="19dp"
+        android:text="Fetch token" />
+
 
 </RelativeLayout>

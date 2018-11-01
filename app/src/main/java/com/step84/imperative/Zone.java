@@ -2,6 +2,8 @@ package com.step84.imperative;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import org.json.JSONObject;
+
 /**
  * TODO: perhaps use this class? What are the alternatives?
  * Store JSON in SharedPrefs?

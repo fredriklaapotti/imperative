@@ -89,8 +89,9 @@ public class SettingsFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
 
         final EditText txt_email = v.findViewById(R.id.txt_email);
-        TextView txt_token = v.findViewById(R.id.txt_token);
+        final TextView txt_token = v.findViewById(R.id.txt_token);
         Button btn_setEmail = v.findViewById(R.id.btn_setEmail);
+        Button btn_fetchToken = v.findViewById(R.id.btn_fetchToken);
 
         // Obviously we should fetch this from database or local storage first
         //txt_email.setText("fredrik.laapotti@gmail.com");
@@ -149,6 +150,23 @@ public class SettingsFragment extends Fragment {
                     }
                 });
                 */
+            }
+        });
+
+        btn_fetchToken.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if(task.isSuccessful()) {
+                            String token = task.getResult().getToken();
+                            Log.i(TAG, "firestore: successfully fetched new token: " + token);
+                            editor.putString("token", token).apply();
+                            txt_token.setText(token);
+                        }
+                    }
+                });
             }
         });
 

@@ -2,6 +2,8 @@ package com.step84.imperative;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import org.json.JSONObject;
+
 import java.util.HashMap;
 
 final class Constants {
@@ -22,4 +24,6 @@ final class Constants {
         ZONES.put("roundabout", new LatLng(57.488871, 15.841141));
         ZONES.put("parkinglot", new LatLng(57.487119, 15.840213));
     }
+
+    static JSONObject zonesJSON;
 }

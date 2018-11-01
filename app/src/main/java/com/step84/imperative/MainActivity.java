@@ -164,6 +164,7 @@ public class MainActivity
         // --------------------------- START LOCATION TEST -------------
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
+        /*
         mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<android.location.Location>() {
             @Override
             public void onSuccess(Location location) {
@@ -173,13 +174,7 @@ public class MainActivity
                 }
             }
         });
-
-        //if(isMapReady != 0) {
-            //SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-            //mapFragment.getMapAsync(this);
-            //MarkerOptions mp = new MarkerOptions();
-            //map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
-        //}
+        */
 
         mLocationCallback = new LocationCallback() {
             @Override
@@ -190,13 +185,8 @@ public class MainActivity
                 for(Location location : locationResult.getLocations()) {
                     SharedPreferences sharedPreferences = getPreferences(Context.MODE_PRIVATE);
                     String isMapReady = sharedPreferences.getString("isMapReady", "false");
-                    //zFragment = new ZonesFragment();
-                    //Log.i(TAG, "geofence: isMapReady: " + isMapReady);
-                    //Log.i(TAG, "geofence: new location");
                     currentLocation = location;
                     if(isMapReady.equals("true")) {
-                        //Log.i(TAG, "geofence: map is ready, new location");
-                        //zFragment.updateMap(location);
                         ZonesFragment.updateMap(location);
                     } else {
                         Log.i(TAG, "geofence: map not ready");
@@ -216,11 +206,10 @@ public class MainActivity
                         double lat = document.getGeoPoint("latlng").getLatitude();
                         double lng = document.getGeoPoint("latlng").getLongitude();
                         //double radius = document.getDouble("radius");
-                        //Log.i(TAG, "geofence: radius values: " + radius);
                         LatLng location = new LatLng(lat, lng);
                         Constants.ZONES.put(name, location);
-                        populateGeofenceList();
                     }
+                    populateGeofenceList();
                 } else {
                     Log.d(TAG, "firestore: Error getting documents: ", task.getException());
                 }
@@ -273,28 +262,6 @@ public class MainActivity
             mRequestingLocationUpdates = true;
         }
     }
-
-    /*
-    public void onMapReady(GoogleMap googleMap) {
-        map = googleMap;
-        LatLng home = new LatLng(57.670897, 15.860455);
-        map.addMarker(new MarkerOptions().position(home).title("Marker"));
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(home,15));
-        Log.i(TAG, "geofence: onMapReady() in MainActivity");
-    }
-
-    public void updateMap(Location location) {
-        Log.i(TAG, "geofence: ENTRY: updateMap()");
-        if(location != null) {
-            Log.i(TAG, "geofence: updateMap() with arguments: " + location.getLatitude() + " " + location.getLongitude());
-            map.clear();
-            MarkerOptions mp = new MarkerOptions();
-            mp.position(new LatLng(location.getLatitude(), location.getLongitude()));
-            map.addMarker(mp);
-            map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
-        }
-    }
-    */
 
     private void performPendingGeofenceTask() {
         Log.i(TAG, "geofence: ENTRY: performPendingGeofenceTask");
@@ -366,7 +333,7 @@ public class MainActivity
     }
 
     private void populateGeofenceList() {
-        Log.i(TAG, "geofence: ENTRY populateGeofenceList()");
+        //Log.i(TAG, "geofence: ENTRY populateGeofenceList()");
         for(Map.Entry<String, LatLng> entry : Constants.ZONES.entrySet()) {
             mGeofenceList.add(new Geofence.Builder()
                     .setRequestId(entry.getKey())

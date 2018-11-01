@@ -125,6 +125,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         // --------------------------- END AUDIO -------------
 
         // --------------------------- START FIRESTORE LOOP -------------
+        /*
         final DocumentReference docRef = db.collection("users").document("zone_01");
         docRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
             @Override
@@ -142,14 +143,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
                         Log.i(TAG, "firestore: larma == true");
                         mediaPlayer.setOnCompletionListener(HomeFragment.this); // This method plays alarm twice when enabled from zones fragment
-                        /*
-                        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                            @Override
-                            public void onCompletion(MediaPlayer mp) {
-                                mp.stop();
-                            }
-                        });
-                        */
+
                         mediaPlayer.start();
                     } else {
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
@@ -160,6 +154,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 }
             }
         });
+        */
         // --------------------------- END FIRESTORE LOOP -------------
 
         // --------------------------- START UNIT INFO -------------
