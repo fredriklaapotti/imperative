@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -7,10 +7,41 @@
 
     <!-- TODO: Update blank fragment layout -->
 
-    <TextView
-        android:id="@+id/fragmentHomeTextView"
+        <Button
+            android:id="@+id/btn_addGeofences"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:text="AGF"
+            android:visibility="invisible" />
+
+    <Button
+        android:id="@+id/btn_larmPreset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Fragment home" />
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="-21dp"
+        android:layout_marginBottom="78dp"
+        android:layout_toEndOf="@+id/btn_addGeofences"
+        android:text="Larm PRESET" />
 
-</FrameLayout>
+    <Button
+        android:id="@+id/btn_larmCustom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/btn_larmPreset"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="72dp"
+        android:text="Larm CUSTOM" />
+
+    <TextView
+        android:id="@+id/txt_selectedZone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/btn_larmPreset"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="143dp"
+        android:text="Placeholder selected zone" />
+
+</RelativeLayout>

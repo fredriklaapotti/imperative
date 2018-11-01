@@ -2,6 +2,7 @@ package com.step84.imperative;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.location.Location;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -13,8 +14,11 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -25,6 +29,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.iid.FirebaseInstanceId;
@@ -51,6 +56,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private static final String ARG_PARAM2 = "param2";
 
     FirebaseFirestore db = FirebaseFirestore.getInstance();
+    final static String TAG = "HomeFragment";
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -94,12 +100,25 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_home, container, false);
-        final TextView textView = v.findViewById(R.id.fragmentHomeTextView);
-        textView.setText("Hemfragmentet");
+
+        final TextView txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
+
+        Button btnAGF = v.findViewById(R.id.btn_addGeofences);
+        btnAGF.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ((MainActivity) getActivity()).addGeofences();
+            }
+        });
+
+
+
 
         // --------------------------- START AUDIO -------------
         final AudioManager audioManager = (AudioManager)getActivity().getSystemService(Context.AUDIO_SERVICE);
         final MediaPlayer mediaPlayer = MediaPlayer.create(getActivity(),R.raw.alarmfile);
+        //mediaPlayer.setOnPreparedListener(HomeFragment.this.onPrepared());
+        //mediaPlayer.prepareAsync();
 
         final int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         final int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -111,17 +130,17 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             @Override
             public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
                 if(e != null) {
-                    textView.setText("listen failed");
+                    Log.d(TAG, "firestore: onEvent() failed");
                 }
 
                 if(documentSnapshot != null && documentSnapshot.exists()) {
                     Map<String, Object> map = documentSnapshot.getData();
 
-                    textView.setText("data: " + documentSnapshot.getData());
+                    Log.i(TAG, "documentSnapshot data: " + documentSnapshot.getData());
                     String larma = documentSnapshot.getData().get("alarm_active").toString();
                     if(larma == "true") {
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
-                        textView.append(larma);
+                        Log.i(TAG, "firestore: larma == true");
                         mediaPlayer.setOnCompletionListener(HomeFragment.this); // This method plays alarm twice when enabled from zones fragment
                         /*
                         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
@@ -137,7 +156,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                     }
                     //mediaPlayer.start();
                 } else {
-                    textView.setText("data: null");
+                    Log.d(TAG, "documentSnapshot data == null");
                 }
             }
         });
@@ -152,6 +171,9 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         // --------------------------- START SHARED PREFERENCES -------------
         final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         final SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        String selectedZone = sharedPreferences.getString("selectedZone","");
+        txtSelectedZone.setText(selectedZone);
         // --------------------------- END SHARED PREFERENCES -------------
 
         /**
@@ -159,6 +181,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
          * Would probably be better to move token fetch to start of activity and monitor updates in background thread
          */
         // --------------------------- START FCM -------------
+        // Move to where we register e-mail, SettingsFragment
+        /*
         FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
             @Override
             public void onComplete(@NonNull Task<InstanceIdResult> task) {
@@ -188,13 +212,80 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 });
             }
         });
+        */
         // --------------------------- END FCM -------------
+
+        Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
+        Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
+
+        btn_larmPreset.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i(TAG, "firestore: alarm button clicked");
+
+                if(sharedPreferences.getString("selectedZone", "").equals("")) {
+                    Log.d(TAG, "firestore: no selected zone");
+                    return;
+                }
+                Map<String, Object> data = new HashMap<>();
+                data.put("activated", Timestamp.now());
+                data.put("type", "preset");
+                data.put("source", sharedPreferences.getString("email",""));
+                data.put("zone", sharedPreferences.getString("selectedZone", ""));
+
+                db.collection("alarms")
+                        .add(data)
+                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                            @Override
+                            public void onSuccess(DocumentReference documentReference) {
+                                Log.i(TAG, "firestore: in addOnSuccessListener()");
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.i(TAG, "firestore: in addOnFailureListener()");
+                            }
+                        });
+            }
+        });
+
+        btn_larmCustom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i(TAG, "firestore: alarm larmCustom button clicked");
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("activated", Timestamp.now());
+                data.put("type", "preset");
+                data.put("source", sharedPreferences.getString("email",""));
+                data.put("zone", "stadshuset");
+
+                db.collection("alarms")
+                        .add(data)
+                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                            @Override
+                            public void onSuccess(DocumentReference documentReference) {
+                                Log.i(TAG, "firestore: in addOnSuccessListener()");
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.i(TAG, "firestore: in addOnFailureListener()");
+                            }
+                        });
+            }
+        });
 
         return v;
     }
 
     public void onCompletion(MediaPlayer mp) {
+    }
 
+    public void onPrepared(MediaPlayer mp) {
+        mp.start();
     }
 
     // TODO: Rename method, update argument and hook method into UI event

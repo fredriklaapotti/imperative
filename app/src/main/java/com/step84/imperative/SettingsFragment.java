@@ -10,13 +10,19 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -81,14 +87,13 @@ public class SettingsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
-        TextView tv = v.findViewById(R.id.fragmentSettingsTextView);
-        tv.setText("Settingsfragmentet");
 
-        EditText txt_email = v.findViewById(R.id.txt_email);
+        final EditText txt_email = v.findViewById(R.id.txt_email);
         TextView txt_token = v.findViewById(R.id.txt_token);
+        Button btn_setEmail = v.findViewById(R.id.btn_setEmail);
 
         // Obviously we should fetch this from database or local storage first
-        txt_email.setText("fredrik.laapotti@gmail.com");
+        //txt_email.setText("fredrik.laapotti@gmail.com");
 
         // --------------------------- START SHARED PREFERENCES -------------
         final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
@@ -96,12 +101,62 @@ public class SettingsFragment extends Fragment {
         String token = sharedPreferences.getString("token","-1");
         Log.d(TAG,"Shared preferences token: " + token);
         txt_token.setText(token);
+
+        String userEmail = sharedPreferences.getString("email","");
+        if(userEmail.equals("")) {
+            txt_email.setText("no email registered");
+        } else {
+            txt_email.setText(userEmail);
+        }
         // --------------------------- END SHARED PREFERENCES -------------
+
+        /** TODO: fetch e-mail, token and add to firestore
+         *
+         */
+        btn_setEmail.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                editor.putString("email", txt_email.getText().toString()).apply();
+
+                /*
+                FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if(!task.isSuccessful()) {
+                            Log.w("Messaging", "getInstanceId failed", task.getException());
+                        }
+
+                        String token = task.getResult().getToken();
+                        Log.d("FCM message token", token);
+                        editor.putString("token", token);
+                        editor.commit();
+
+                        Map<String, Object> deviceInfo = new HashMap<>();
+                        deviceInfo.put("email", "fredrik.laapotti@gmail.com");
+                        deviceInfo.put("FCMtoken", token);
+                        deviceInfo.put("updateTimestamp", Timestamp.now());
+                        db.collection("devices").add(deviceInfo).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                            @Override
+                            public void onSuccess(DocumentReference documentReference) {
+                                Log.d("MINDEBUG", "Snapshot written with id:" + documentReference.getId());
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.d("MINDEBUG", "Error adding document");
+                            }
+                        });
+                    }
+                });
+                */
+            }
+        });
 
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("email", txt_email.getText().toString());
         Log.d(TAG,"txt_email value: " + txt_email.getText());
 
+        /*
         db.collection("users")
         .add(userInfo)
         .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
@@ -115,6 +170,7 @@ public class SettingsFragment extends Fragment {
                 Log.d("MINDEBUG", "Error adding document");
             }
         });
+        */
         return v;
     }
 
