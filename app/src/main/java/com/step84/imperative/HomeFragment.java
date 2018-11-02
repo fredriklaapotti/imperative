@@ -78,6 +78,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private String timestampNow;
     private Uri downloadUri;
     private String encodedUrl;
+    private TextView txtSelectedZone;
 
     private AudioManager audioManager;
     private MediaPlayer mediaPlayer;
@@ -128,7 +129,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_home, container, false);
 
-        final TextView txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
+        txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
 
         Button btnAGF = v.findViewById(R.id.btn_addGeofences);
         btnAGF.setOnClickListener(new View.OnClickListener() {
@@ -137,8 +138,6 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 ((MainActivity) getActivity()).addGeofences();
             }
         });
-
-
 
 
         // --------------------------- START AUDIO -------------
@@ -195,7 +194,15 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         editor = sharedPreferences.edit();
 
         String selectedZone = sharedPreferences.getString("selectedZone","");
-        txtSelectedZone.setText(selectedZone);
+        //txtSelectedZone.setText(selectedZone);
+        for(Zone zone : Constants.zoneArrayList) {
+            if(selectedZone.equals(zone.getName()) && zone.getSubscribed()) {
+                txtSelectedZone.setText(selectedZone + " - subscribed");
+                break;
+            } else {
+                txtSelectedZone.setText(selectedZone + " - not subscribed");
+            }
+        }
         // --------------------------- END SHARED PREFERENCES -------------
 
         /**

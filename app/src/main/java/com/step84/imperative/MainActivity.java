@@ -51,6 +51,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -101,7 +103,7 @@ public class MainActivity
     /* --- END GEOFENCING SETUP ---*/
     private GoogleMap map;
     private ZonesFragment zFragment;
-    private SharedPreferences sharedPref;
+    private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
 
     //int currentVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION);
@@ -158,8 +160,8 @@ public class MainActivity
 
         createNotificationChannel();
 
-        sharedPref = getPreferences(Context.MODE_PRIVATE);
-        editor = sharedPref.edit();
+        sharedPreferences = getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
         editor.putString("isMapReady", "false");
         editor.apply();
 
@@ -176,7 +178,7 @@ public class MainActivity
         // --------------------------- START LOCATION TEST -------------
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        /*
+
         mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<android.location.Location>() {
             @Override
             public void onSuccess(Location location) {
@@ -186,7 +188,7 @@ public class MainActivity
                 }
             }
         });
-        */
+
 
         mLocationCallback = new LocationCallback() {
             @Override
@@ -237,13 +239,14 @@ public class MainActivity
         mGeofencePendingIntent = null;
 
         populateGeofenceList();
+        populateGeofenceListFromFirestore();
         mGeofencingClient = LocationServices.getGeofencingClient(this);
 
         //Log.i(TAG, "geofence: mGeofencingClient: " + mGeofencingClient.toString());
-        addGeofences();
+        //addGeofences();
         /* --- END GEOFENCING SECTION ---*/
 
-        populateGeofenceListFromFirestore();
+
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
         HomeFragment homeFragment = new HomeFragment();
         switchFragment(homeFragment);
@@ -356,6 +359,20 @@ public class MainActivity
 
         Log.i(TAG,"firestore geofence: entered populateGeofenceList()");
 
+        for(Zone zone : Constants.zoneArrayList) {
+            mGeofenceList.add(new Geofence.Builder()
+                    .setRequestId(zone.getName())
+                    .setCircularRegion(
+                            zone.getLat(),
+                            zone.getLng(),
+                            (float)zone.getRadius()
+                    )
+                    //.setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
+                    .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .build());
+
+        }
 
         // --------------------------- START UPDATE ZONES TEST -------------
 /*
@@ -399,6 +416,7 @@ public class MainActivity
          * SAVE BUT TRY TO FETCH FROM FIRESTORE
          */
 
+        /*
         //Log.i(TAG, "geofence: ENTRY populateGeofenceList()");
         for(Map.Entry<String, LatLng> entry : Constants.ZONES.entrySet()) {
             Log.i(TAG, "firestore geofence: adding geofences: entry.getKey() = " + entry.getKey() + ", entry.getValue().latitude = " + entry.getValue().latitude);
@@ -415,7 +433,7 @@ public class MainActivity
                     .build());
         }
         Log.i(TAG, "geofence: populated list in populateGeofenceList()");
-
+        */
 
         /**
          * END WORKING SNIPPET
@@ -432,7 +450,7 @@ public class MainActivity
                     Log.i(TAG, "firestore geofence: in onComplete loop");
                     for (QueryDocumentSnapshot document : task.getResult()) {
                         String name = document.get("name").toString();
-                        Log.i(TAG, "firestore geofence: looping through geofences from database = " + name);
+                        //Log.i(TAG, "firestore geofence: looping through geofences from database = " + name);
                         double lat = document.getGeoPoint("latlng").getLatitude();
                         double lng = document.getGeoPoint("latlng").getLongitude();
                         double radius = document.getDouble("radius");
@@ -443,12 +461,17 @@ public class MainActivity
                                 .setCircularRegion(
                                         lat,
                                         lng,
-                                        (float)radius
+                                        (float) radius
                                 )
                                 .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                                 .build());
+                        Constants.zoneArrayList.add(new Zone(name, new LatLng(lat, lng), radius, false));
 
+                        /**
+                         * Old code
+                         */
+                        /*
                         editor.putString("geofence_"+name, "active").apply();
 
                         JSONObject geofencezone = new JSONObject();
@@ -461,15 +484,22 @@ public class MainActivity
                             Log.d(TAG, "firestore geofence: JSON handling");
                         }
                         geofenceJSONArray.put(geofencezone);
+
+
+                        try {
+                            geofenceJSONObject.put("geofenceList", geofenceJSONArray);
+                        } catch(JSONException e) {
+                            Log.d(TAG, "firestore geofence: failed to build geofenceList json object");
+                        }
+                        //Log.i(TAG, "firestore geofence: geofenceJSONObject.toString() = " + geofenceJSONObject.toString());
+                        editor.putString("geofencesJSON", geofenceJSONObject.toString()).apply();
+                        editor.putString("geofencesJSONArray", geofenceJSONArray.toString()).apply();
+                        */
+                        /**
+                         * End Old code
+                         */
                     }
-                    try {
-                        geofenceJSONObject.put("geofenceList", geofenceJSONArray);
-                    } catch(JSONException e) {
-                        Log.d(TAG, "firestore geofence: failed to build geofenceList json object");
-                    }
-                    Log.i(TAG, "firestore geofence: geofenceJSONObject.toString() = " + geofenceJSONObject.toString());
-                    editor.putString("geofencesJSON", geofenceJSONObject.toString()).apply();
-                    editor.putString("geofencesJSONArray", geofenceJSONArray.toString()).apply();
+                    addGeofences();
                 } else {
                     Log.d(TAG, "firestore geofence: Error getting documents to populate geofences: ", task.getException());
                 }

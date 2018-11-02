@@ -4,7 +4,9 @@ import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 final class Constants {
     private Constants() {
@@ -19,10 +21,12 @@ final class Constants {
     static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS = GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
     static final float GEOFENCE_RADIUS_IN_METERS = 100;
     static final HashMap<String, LatLng> ZONES = new HashMap<>();
+    static ArrayList<Zone> zoneArrayList = new ArrayList<Zone>();
+    //static ArrayList<String> subscribedTopics = new ArrayList<String>();
 
     static {
-        ZONES.put("roundabout", new LatLng(57.488871, 15.841141));
-        ZONES.put("parkinglot", new LatLng(57.487119, 15.840213));
+        //ZONES.put("home", new LatLng(57.671013, 15.860407));
+        zoneArrayList.add(new Zone("placeholder", new LatLng(59.374349, 13.513987), 100, true));
     }
 
     static JSONObject zonesJSON;

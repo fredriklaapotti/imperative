@@ -33,14 +33,17 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 import com.google.gson.JsonObject;
@@ -51,6 +54,7 @@ import org.json.JSONObject;
 import org.w3c.dom.Document;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -79,6 +83,17 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
     private static final String ARG_PARAM2 = "param2";
 
     private static final String TAG = "ZonesFragment";
+
+    private SharedPreferences sharedPreferences;
+    private SharedPreferences.Editor editor;
+
+    private List<String> zones = new ArrayList<>();
+
+    private Button btn_enableAlarm;
+    private Button btn_disableAlarm;
+    private Button btn_toggleSubscription;
+    private Button btn_updateSubscriptions;
+    private Spinner spinner_zones;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -124,14 +139,90 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         final Map<String, Boolean> enableAlarm = new HashMap<>();
 
-        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPreferences.edit();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
 
-        Button btn_enableAlarm = v.findViewById(R.id.btn_enableAlarm);
-        Button btn_disableAlarm = v.findViewById(R.id.btn_disableAlarm);
+        btn_enableAlarm = v.findViewById(R.id.btn_enableAlarm);
+        btn_disableAlarm = v.findViewById(R.id.btn_disableAlarm);
+        btn_toggleSubscription = v.findViewById(R.id.btn_toggleSubscription);
+        /**
+         * CONTINUE HERE 181102 17.24
+         */
+        btn_toggleSubscription.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String selected = sharedPreferences.getString("selectedZone", "");
+                if(btn_toggleSubscription.getText().equals("subscribe")) {
+                    FirebaseMessaging.getInstance().subscribeToTopic(selected)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if(task.isSuccessful()) {
+                                        Map<String, Object> topics = new HashMap<>();
+                                        Map<String, Object> topic = new HashMap<>();
+                                        topic.put(selected, Timestamp.now());
+                                        topics.put("topics", topic);
+                                        db.collection("users").document(sharedPreferences.getString("email", "")).set(topics, SetOptions.merge());
+
+                                        /**
+                                         * Should rethink this. Perhaps getter of the correct object based on name?
+                                         */
+                                        for(Zone zone : Constants.zoneArrayList) {
+                                            if(zone.getName().equals(selected)) {
+                                                zone.setSubscribed(true);
+                                            }
+                                        }
+
+                                        Log.i(TAG, "firestore: successfully subscribed to topic " + sharedPreferences.getString("selectedZone", "") + "and updated database");
+                                        btn_toggleSubscription.setText("unsubscribe");
+                                    }
+                                }
+                            });
+                } else if(btn_toggleSubscription.getText().equals("unsubscribe")) {
+                    // Unsubscribe from topic
+
+                    FirebaseMessaging.getInstance().unsubscribeFromTopic(selected)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if(task.isSuccessful()) {
+                                        Map<String, Object> topics = new HashMap<>();
+                                        Map<String, Object> topic = new HashMap<>();
+                                        topic.put(selected, FieldValue.delete());
+                                        topics.put("topics", topic);
+                                        db.collection("users").document(sharedPreferences.getString("email", "")).set(topics, SetOptions.merge());
+
+                                        for(Zone zone : Constants.zoneArrayList) {
+                                            if (zone.getName().equals(selected)) {
+                                                zone.setSubscribed(false);
+                                            }
+                                        }
+
+                                        Log.i(TAG, "firestore: successfully unsubscribed to topic " + sharedPreferences.getString("selectedZone", "") + "and updated database");
+                                        btn_toggleSubscription.setText("subscribe");
+                                    }
+                                }
+                            });
+
+                    Log.i(TAG, "firestore geofence: unsubscribe from: " + selected);
+                } else {
+                    return;
+                }
+                updateSubscriptionsFromFirestore();
+            }
+        });
+
+
+        btn_updateSubscriptions = v.findViewById(R.id.btn_updateSubscriptions);
+        btn_updateSubscriptions.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateSubscriptionsFromFirestore();
+            }
+        });
 
         // --- START SPINNER LOGIC ---
-        Spinner spinner_zones = v.findViewById(R.id.spinner_zones);
+        spinner_zones = v.findViewById(R.id.spinner_zones);
         spinner_zones.setOnItemSelectedListener(this);
 
         // --- BEGIN SUB FIRESTORE ---
@@ -176,7 +267,13 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         });
         */
         // --- END SUB FIRESTORE ---
-        List<String> zones = new ArrayList<>(Constants.ZONES.keySet());
+        //List<String> zones = new ArrayList<>(Constants.ZONES.keySet());
+        //zones = new ArrayList<>();
+        for(Zone zone : Constants.zoneArrayList) {
+            if(zone.getName() != "placeholder") {
+                zones.add(zone.getName());
+            }
+        }
 
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -194,6 +291,10 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         //final SupportMapFragment myMAPF = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         //myMAPF.getMapAsync(this);
 
+        /**
+         * Code before we updated to handle alarms from Firestore with FCM
+         */
+        /*
         btn_enableAlarm.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
                 enableAlarm.put("alarm_active", true);
@@ -235,6 +336,12 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                         });
             }
         });
+        */
+
+        /**
+         * END
+         * Code before we updated to handle alarms from Firestore with FCM
+         */
 
         // --------------------------- START OLD FIRESTORE LOOP -------------
 
@@ -340,10 +447,10 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         LatLng home = new LatLng(57.670897, 15.860455);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(home,15));
 
-        final SharedPreferences sharedPref = getActivity().getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPref.edit();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
         editor.putString("isMapReady", "true").apply();
-        Log.i(TAG, "geofence: onMapReady() in ZonesFragment");
+        //Log.i(TAG, "geofence: onMapReady() in ZonesFragment");
     }
 
     public static void updateMap(Location location) {
@@ -352,35 +459,129 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             Log.i(TAG, "geofence: updateMap() with arguments: " + location.getLatitude() + " " + location.getLongitude());
             mMap.clear();
             // TEST CIRCLES
-            for(Map.Entry<String, LatLng> entry : Constants.ZONES.entrySet()) {
+            /*
+            for (Map.Entry<String, LatLng> entry : Constants.ZONES.entrySet()) {
                 //String key = entry.getKey(); // For use with marker below
                 LatLng latLng = entry.getValue();
                 //Log.i(TAG, "geofence: key = " + key + ", latlng = " + latLng.toString());
                 Circle circle = mMap.addCircle(new CircleOptions()
-                    .center(latLng)
-                    .radius(Constants.GEOFENCE_RADIUS_IN_METERS)
-                    .strokeColor(Color.RED)
+                        .center(latLng)
+                        .radius(Constants.GEOFENCE_RADIUS_IN_METERS)
+                        .strokeColor(Color.RED)
                         .strokeWidth(5)
-                    .fillColor(0x220000FF));
+                        .fillColor(0x220000FF));
                 //Marker marker = mMap.addMarker(new MarkerOptions().position(latLng).title(key));
-                }
             }
+            */
             // TEST CIRCLES END
+
+            // NEW TEST, COLOR SUBSCRIBED CIRCLES WITH RED
+            int fillColor;
+            for (Zone zone : Constants.zoneArrayList) {
+                if(zone.getSubscribed()) {
+                    fillColor = 0x220000FF;
+                } else {
+                    fillColor = 0x22FF0000;
+                }
+                //Log.i(TAG, "geofence: looping through zones " + zone.getName() + zone.getRadius());
+                Circle circle = mMap.addCircle(new CircleOptions()
+                        .center(zone.getLatlng())
+                        .radius(zone.getRadius())
+                        .strokeColor(Color.BLUE)
+                        .strokeWidth(5)
+                        .fillColor(fillColor));
+            }
+            // END NEW TEST, COLOR SUBSCRIBED CIRCLES WITH RED
+
+            // TEST CIRCLES WITH ARRAY OF OBJECTS
+            /*
+            for (Zone zone : Constants.zoneArrayList) {
+                //Log.i(TAG, "geofence: looping through zones " + zone.getName() + zone.getRadius());
+                Circle circle = mMap.addCircle(new CircleOptions()
+                        .center(zone.getLatlng())
+                        .radius(zone.getRadius())
+                        .strokeColor(Color.RED)
+                        .strokeWidth(5)
+                        .fillColor(0x220000FF));
+            }
+            */
+            // END TEST CIRCLES WITH ARRAY OF OBJECTS
             MarkerOptions mp = new MarkerOptions();
             mp.position(new LatLng(location.getLatitude(), location.getLongitude()));
             mMap.addMarker(mp);
             // Code below works but gets tiresome when changing perspective. Use? Yes/No?
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
+        }
     }
 
     public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPreferences.edit();
-        String selected = parent.getItemAtPosition(pos).toString();
-        editor.putString("selectedZone", selected).apply();
-        int userChoice = parent.getSelectedItemPosition();
-        editor.putInt("userChoiceSpinner", userChoice).apply();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
+        String userEmail = sharedPreferences.getString("email", "");
+        updateSubscriptionsFromFirestore();
 
+        String selected = parent.getItemAtPosition(pos).toString();
+        int userChoice = parent.getSelectedItemPosition();
+        editor.putString("selectedZone", selected).apply();
+        editor.putInt("userChoiceSpinner", userChoice).apply();
+        //Log.i(TAG, "firestore geofence: selected value in SharedPreferences = " + sharedPreferences.getString("selectedZone", ""));
+
+        //Log.i(TAG, "firestore geofence: Constants.zoneArrayList = " + Constants.zoneArrayList.toString());
+
+        /**
+         * Iterate over all the known zones
+         * The zoneArrayList is populated in MainActivity.populateGeofencesFromFirestore
+         */
+        for(Zone zone : Constants.zoneArrayList) {
+            if(zone.getName().equals(selected)) {
+                if(zone.getSubscribed()) {
+                    btn_toggleSubscription.setText("unsubscribe");
+                } else {
+                    btn_toggleSubscription.setText("subscribe");
+                }
+            }
+        }
+
+        /**
+         * CODE BLOCK: GET SUBSCRIBED TOPICS FROM DATABASE AND ADD TO CONSTANTS
+         * Moved to MainActivity
+         */
+        /*
+        DocumentReference documentReference = db.collection("users").document(userEmail);
+        documentReference.get()
+                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot documentSnapshot = task.getResult();
+                            if (documentSnapshot.exists()) {
+                                //Object zonesList = documentSnapshot.getData().get("topics");
+                                for(Map.Entry<String, Object> zone : documentSnapshot.getData().entrySet()) {
+                                    String key = zone.getKey();
+                                    if(key.contains("topics")) {
+                                        Map<Object, Object> topics = (Map<Object, Object>) zone.getValue();
+                                        //Log.i(TAG, "firestore geofence: looping through object object = " + zone.getValue());
+                                        for(Map.Entry<Object, Object> oneTopic : topics.entrySet()) {
+                                            Log.i(TAG, "firestore geofence: looping topics from database: key = " + oneTopic.getKey() + ", value = " + oneTopic.getValue());
+                                            //Constants.subscribedTopics.add(oneTopic.getValue().toString());
+                                        }
+                                    }
+                                }
+                            } else {
+                                Log.i(TAG,"firestore geofence: failed to fetch document");
+                            }
+                        }
+                    }
+                });
+                */
+        /**
+         * END CODE BLOCK
+         * CODE BLOCK: GET SUBSCRIBED TOPICS FROM DATABASE AND ADD TO CONSTANTS
+         */
+
+
+        // Code below works, but implement subscription in database
+        /*
         for(String topic : sharedPreferences.getAll().keySet()) {
             Log.i(TAG, "firestore: unsubscribing from: " + topic);
             FirebaseMessaging.getInstance().unsubscribeFromTopic(topic);
@@ -396,10 +597,70 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                         }
                     }
         });
+        */
 
+        updateSubscriptionsFromFirestore();
     }
 
     public void onNothingSelected(AdapterView<?> parent) {
+
+    }
+
+    /**
+     * Instead of having a separate button to do this we should perhaps do it on a subscribe button click?
+     */
+    private void updateSubscriptionsFromFirestore() {
+
+        /**
+         * CODE BLOCK: GET SUBSCRIBED TOPICS FROM DATABASE AND ADD TO CONSTANTS
+         */
+        DocumentReference documentReference = db.collection("users").document(sharedPreferences.getString("email",""));
+        documentReference.get()
+                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot documentSnapshot = task.getResult();
+                            if (documentSnapshot.exists()) {
+                                //Object zonesList = documentSnapshot.getData().get("topics");
+                                for(Map.Entry<String, Object> zone : documentSnapshot.getData().entrySet()) {
+                                    String key = zone.getKey();
+                                    if(key.contains("topics")) {
+                                        Map<Object, Object> topics = (Map<Object, Object>) zone.getValue();
+                                        //Log.i(TAG, "firestore geofence: looping through object object = " + zone.getValue());
+                                        for(Map.Entry<Object, Object> oneTopic : topics.entrySet()) {
+                                            Log.i(TAG, "firestore geofence: looping topics from database: key = " + oneTopic.getKey() + ", value = " + oneTopic.getValue());
+                                            //Constants.subscribedTopics.add(oneTopic.getValue().toString()); // Should be deprecated, use the zone objects instead
+
+                                            /**
+                                             * So this became quite messy with nested loops
+                                             * However, at the moment it's good enough to iterate over the small set from Firestore
+                                             * and do most of the comparisons on the local zoneArrayList
+                                             * The other way around would involve calling Firestore for _all_ the local stored zones
+                                             */
+                                            for(Zone zoneList : Constants.zoneArrayList) {
+                                                //Log.i(TAG, "firestore geofence: inner loop should trigger");
+                                                if(zoneList.getName().equals(oneTopic.getKey())) {
+                                                    zoneList.setSubscribed(true);
+                                                    Log.i(TAG, "firestore geofence: found match for " + oneTopic.getKey());
+                                                    if(zoneList.getName().equals(spinner_zones.getSelectedItem().toString())) {
+                                                        btn_toggleSubscription.setText("unsubscribe");
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Log.i(TAG,"firestore geofence: failed to fetch document for subscribing to topics");
+                            }
+                        }
+                    }
+                });
+        /**
+         * END CODE BLOCK
+         * CODE BLOCK: GET SUBSCRIBED TOPICS FROM DATABASE AND ADD TO CONSTANTS
+         */
 
     }
 }

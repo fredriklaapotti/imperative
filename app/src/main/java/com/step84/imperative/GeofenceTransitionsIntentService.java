@@ -36,7 +36,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        //Log.i(TAG, "geofence: in onHandleIntent IntentService");
+        Log.i(TAG, "geofence: in onHandleIntent IntentService");
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if(geofencingEvent.hasError()) {
             String errorMessage = GeofenceErrorMessages.getErrorString(this, geofencingEvent.getErrorCode());
@@ -49,7 +49,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
         if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
             String geofenceTransitionDetails = getGeofenceTransitionDetails(geofenceTransition, triggeringGeofences);
-            //Log.i(TAG, geofenceTransitionDetails);
+            Log.i(TAG, geofenceTransitionDetails);
             //Log.i(TAG, "geofence: enter or exit");
 
             for(Geofence geofence : triggeringGeofences) {

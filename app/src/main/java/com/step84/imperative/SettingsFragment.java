@@ -44,6 +44,9 @@ public class SettingsFragment extends Fragment {
 
     FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+    private SharedPreferences sharedPreferences;
+    private SharedPreferences.Editor editor;
+
     private static String TAG = "SettingsFragment";
 
     // TODO: Rename and change types of parameters
@@ -97,8 +100,8 @@ public class SettingsFragment extends Fragment {
         //txt_email.setText("fredrik.laapotti@gmail.com");
 
         // --------------------------- START SHARED PREFERENCES -------------
-        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPreferences.edit();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
         String token = sharedPreferences.getString("token","-1");
         Log.d(TAG,"Shared preferences token: " + token);
         txt_token.setText(token);
@@ -119,6 +122,24 @@ public class SettingsFragment extends Fragment {
             public void onClick(View v) {
                 editor.putString("email", txt_email.getText().toString()).apply();
                 Log.i(TAG, "firestore geofence: geofencesJSON in SharedPrefs = " + sharedPreferences.getString("geofencesJSON", ""));
+
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("email", txt_email.getText().toString());
+                userInfo.put("lastUpdated", Timestamp.now());
+
+                db.collection("users").document(txt_email.getText().toString())
+                        .set(userInfo)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                Log.d(TAG, "Snapshot written");
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Log.d("MINDEBUG", "Error adding document");
+                            }
+                });
 
                 /*
                 FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
@@ -171,9 +192,11 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        /*
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("email", txt_email.getText().toString());
         Log.d(TAG,"txt_email value: " + txt_email.getText());
+        */
 
         /*
         db.collection("users")
