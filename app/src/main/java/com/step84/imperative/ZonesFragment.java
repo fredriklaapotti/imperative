@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import com.google.android.gms.common.internal.service.Common;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -208,7 +209,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                 } else {
                     return;
                 }
-                updateSubscriptionsFromFirestore();
+                CommonFunctions.updateSubscriptionsFromFirestore(TAG, "users", sharedPreferences.getString("email", ""));
+                updateSubscriptionText();
             }
         });
 
@@ -217,7 +219,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         btn_updateSubscriptions.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                updateSubscriptionsFromFirestore();
+                CommonFunctions.updateSubscriptionsFromFirestore(TAG, "users", sharedPreferences.getString("email", ""));
+                updateSubscriptionText();
             }
         });
 
@@ -270,7 +273,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         //List<String> zones = new ArrayList<>(Constants.ZONES.keySet());
         //zones = new ArrayList<>();
         for(Zone zone : Constants.zoneArrayList) {
-            if(zone.getName() != "placeholder") {
+            if(!zone.getName().equals("placeholder")) {
                 zones.add(zone.getName());
             }
         }
@@ -518,7 +521,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         editor = sharedPreferences.edit();
         String userEmail = sharedPreferences.getString("email", "");
-        updateSubscriptionsFromFirestore();
+        CommonFunctions.updateSubscriptionsFromFirestore(TAG, "users", sharedPreferences.getString("email", ""));
+        updateSubscriptionText();
 
         String selected = parent.getItemAtPosition(pos).toString();
         int userChoice = parent.getSelectedItemPosition();
@@ -599,18 +603,27 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         });
         */
 
-        updateSubscriptionsFromFirestore();
+        CommonFunctions.updateSubscriptionsFromFirestore(TAG, "users", sharedPreferences.getString("email", ""));
+        updateSubscriptionText();
+
     }
 
     public void onNothingSelected(AdapterView<?> parent) {
 
     }
 
+    private void updateSubscriptionText() {
+        for(Zone zone : Constants.zoneArrayList) {
+            if(zone.getSubscribed() && zone.getName().equals(spinner_zones.getSelectedItem().toString())) {
+                btn_toggleSubscription.setText("unsubscribe");
+            }
+        }
+    }
+
     /**
      * Instead of having a separate button to do this we should perhaps do it on a subscribe button click?
      */
     private void updateSubscriptionsFromFirestore() {
-
         /**
          * CODE BLOCK: GET SUBSCRIBED TOPICS FROM DATABASE AND ADD TO CONSTANTS
          */
@@ -626,6 +639,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                 for(Map.Entry<String, Object> zone : documentSnapshot.getData().entrySet()) {
                                     String key = zone.getKey();
                                     if(key.contains("topics")) {
+                                        @SuppressWarnings("unchecked")
                                         Map<Object, Object> topics = (Map<Object, Object>) zone.getValue();
                                         //Log.i(TAG, "firestore geofence: looping through object object = " + zone.getValue());
                                         for(Map.Entry<Object, Object> oneTopic : topics.entrySet()) {

@@ -7,6 +7,26 @@
 
     <!-- TODO: Update blank fragment layout -->
 
+    <Button
+        android:id="@+id/btn_userLogout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/btn_setEmail"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="257dp"
+        android:layout_marginEnd="29dp"
+        android:text="User Logout" />
+
+    <Button
+        android:id="@+id/btn_userLogin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/btn_setEmail"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="256dp"
+        android:layout_marginEnd="145dp"
+        android:text="User Login" />
+
     <EditText
         android:id="@+id/txt_email"
         android:layout_width="wrap_content"
@@ -14,9 +34,9 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="87dp"
-        android:layout_marginEnd="37dp"
+        android:layout_marginStart="30dp"
+        android:layout_marginTop="52dp"
+        android:layout_marginEnd="39dp"
         android:ems="10"
         android:inputType="textEmailAddress" />
 
@@ -27,9 +47,9 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="230dp"
-        android:layout_marginEnd="32dp"
+        android:layout_marginStart="29dp"
+        android:layout_marginTop="247dp"
+        android:layout_marginEnd="35dp"
         android:background="#eeeeee" />
 
     <TextView
@@ -39,7 +59,7 @@
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignParentTop="true"
         android:layout_marginStart="0dp"
-        android:layout_marginTop="60dp"
+        android:layout_marginTop="30dp"
         android:text="E-mail:" />
 
     <TextView
@@ -48,8 +68,8 @@
         android:layout_height="wrap_content"
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="200dp"
+        android:layout_marginStart="-4dp"
+        android:layout_marginTop="212dp"
         android:text="Token:" />
 
     <Button
@@ -58,8 +78,8 @@
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/txt_email"
         android:layout_alignParentStart="true"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="55dp"
+        android:layout_marginStart="31dp"
+        android:layout_marginTop="109dp"
         android:text="Set e-mail" />
 
     <Button
@@ -71,6 +91,37 @@
         android:layout_marginStart="2dp"
         android:layout_marginTop="19dp"
         android:text="Fetch token" />
+
+    <Button
+        android:id="@+id/btn_userCreate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/btn_setEmail"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="255dp"
+        android:layout_marginEnd="255dp"
+        android:text="User Create" />
+
+    <Button
+        android:id="@+id/btn_userVerify"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/btn_setEmail"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="305dp"
+        android:layout_marginEnd="259dp"
+        android:text="User Verify" />
+
+    <EditText
+        android:id="@+id/txt_password"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txt_email"
+        android:layout_marginStart="-117dp"
+        android:layout_marginTop="4dp"
+        android:layout_toEndOf="@+id/btn_fetchToken"
+        android:ems="10"
+        android:inputType="textPassword" />
 
 
 </RelativeLayout>

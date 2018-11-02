@@ -1,6 +1,7 @@
 package com.step84.imperative;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.annotation.NonNull;
@@ -108,7 +109,14 @@ public class MessageService extends FirebaseMessagingService implements MediaPla
                  */
                 audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
                 MediaPlayer alarmPlayer = new MediaPlayer();
-                alarmPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
+
+                alarmPlayer.setAudioAttributes(audioAttributes);
+                //alarmPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
                 try {
                     alarmPlayer.setDataSource(url);

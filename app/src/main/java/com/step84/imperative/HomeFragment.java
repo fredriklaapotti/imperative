@@ -30,6 +30,8 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
@@ -70,6 +72,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
 
     FirebaseFirestore db = FirebaseFirestore.getInstance();
     FirebaseStorage storage = FirebaseStorage.getInstance();
+    private FirebaseAuth mAuth;
+    private FirebaseUser currentUser;
 
     final static String TAG = "HomeFragment";
     private MediaRecorder myAudioRecorder;
@@ -80,8 +84,15 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private String encodedUrl;
     private TextView txtSelectedZone;
 
+    private Button btn_larmPreset;
+    private Button btn_larmCustom;
+    private Button btn_larmRecord;
+
     private AudioManager audioManager;
     private MediaPlayer mediaPlayer;
+
+    private int currentVolume;
+    private int maxVolume;
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
@@ -121,6 +132,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
     }
 
     @Override
@@ -130,6 +143,9 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         View v = inflater.inflate(R.layout.fragment_home, container, false);
 
         txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
+        btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
+        btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
+        btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
 
         Button btnAGF = v.findViewById(R.id.btn_addGeofences);
         btnAGF.setOnClickListener(new View.OnClickListener() {
@@ -139,6 +155,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             }
         });
 
+        updateUI(currentUser);
+
 
         // --------------------------- START AUDIO -------------
         audioManager = (AudioManager)getActivity().getSystemService(Context.AUDIO_SERVICE);
@@ -146,8 +164,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         //mediaPlayer.setOnPreparedListener(HomeFragment.this.onPrepared());
         //mediaPlayer.prepareAsync();
 
-        final int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-        final int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         // --------------------------- END AUDIO -------------
 
         // --------------------------- START FIRESTORE LOOP -------------
@@ -243,10 +261,6 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         });
         */
         // --------------------------- END FCM -------------
-
-        Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
-        Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
-        final Button btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
 
         btn_larmPreset.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -506,6 +520,14 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         });
 
         return v;
+    }
+
+    public void updateUI(FirebaseUser user) {
+        if(CommonFunctions.userPermissions(user).equals("verified")) {
+            btn_larmRecord.setVisibility(View.VISIBLE);
+        } else {
+            btn_larmRecord.setVisibility(View.GONE);
+        }
     }
 
     public void onCompletion(MediaPlayer mp) {
