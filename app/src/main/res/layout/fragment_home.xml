@@ -44,4 +44,14 @@
         android:layout_marginBottom="143dp"
         android:text="Placeholder selected zone" />
 
+    <Button
+        android:id="@+id/btn_larmRecord"
+        android:layout_width="243dp"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/btn_larmPreset"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="1dp"
+        android:layout_marginBottom="186dp"
+        android:text="Record and larm" />
+
 </RelativeLayout>

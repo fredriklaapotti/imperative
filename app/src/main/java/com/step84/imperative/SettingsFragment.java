@@ -118,6 +118,7 @@ public class SettingsFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 editor.putString("email", txt_email.getText().toString()).apply();
+                Log.i(TAG, "firestore geofence: geofencesJSON in SharedPrefs = " + sharedPreferences.getString("geofencesJSON", ""));
 
                 /*
                 FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {

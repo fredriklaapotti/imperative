@@ -1,13 +1,18 @@
 package com.step84.imperative;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -19,6 +24,7 @@ import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -34,7 +40,14 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,14 +62,28 @@ import javax.annotation.Nullable;
  * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionListener {
+public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
 
     FirebaseFirestore db = FirebaseFirestore.getInstance();
+    FirebaseStorage storage = FirebaseStorage.getInstance();
+
     final static String TAG = "HomeFragment";
+    private MediaRecorder myAudioRecorder;
+    private boolean recording = false;
+    private String outputFile;
+    private String timestampNow;
+    private Uri downloadUri;
+    private String encodedUrl;
+
+    private AudioManager audioManager;
+    private MediaPlayer mediaPlayer;
+
+    private SharedPreferences sharedPreferences;
+    private SharedPreferences.Editor editor;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -115,8 +142,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
 
 
         // --------------------------- START AUDIO -------------
-        final AudioManager audioManager = (AudioManager)getActivity().getSystemService(Context.AUDIO_SERVICE);
-        final MediaPlayer mediaPlayer = MediaPlayer.create(getActivity(),R.raw.alarmfile);
+        audioManager = (AudioManager)getActivity().getSystemService(Context.AUDIO_SERVICE);
+        mediaPlayer = MediaPlayer.create(getActivity(),R.raw.alarmfile);
         //mediaPlayer.setOnPreparedListener(HomeFragment.this.onPrepared());
         //mediaPlayer.prepareAsync();
 
@@ -158,14 +185,14 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         // --------------------------- END FIRESTORE LOOP -------------
 
         // --------------------------- START UNIT INFO -------------
-        TelephonyManager telephonyManager = (TelephonyManager) getActivity().getSystemService(Context.TELEPHONY_SERVICE);
+        //TelephonyManager telephonyManager = (TelephonyManager) getActivity().getSystemService(Context.TELEPHONY_SERVICE);
         //String IMEI = telephonyManager.getImei();
         //Log.d("unit info", "Device ID, IMEI:");
         // --------------------------- END UNIT INFO -------------
 
         // --------------------------- START SHARED PREFERENCES -------------
-        final SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPreferences.edit();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        editor = sharedPreferences.edit();
 
         String selectedZone = sharedPreferences.getString("selectedZone","");
         txtSelectedZone.setText(selectedZone);
@@ -212,6 +239,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
 
         Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
         Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
+        final Button btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
 
         btn_larmPreset.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -223,10 +251,11 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                     return;
                 }
                 Map<String, Object> data = new HashMap<>();
-                data.put("activated", Timestamp.now());
+                //data.put("activated", Timestamp.now());
                 data.put("type", "preset");
                 data.put("source", sharedPreferences.getString("email",""));
                 data.put("zone", sharedPreferences.getString("selectedZone", ""));
+                data.put("alarmfile", "");
 
                 db.collection("alarms")
                         .add(data)
@@ -251,10 +280,11 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 Log.i(TAG, "firestore: alarm larmCustom button clicked");
 
                 Map<String, Object> data = new HashMap<>();
-                data.put("activated", Timestamp.now());
+                //data.put("activated", Timestamp.now());
                 data.put("type", "preset");
                 data.put("source", sharedPreferences.getString("email",""));
                 data.put("zone", "stadshuset");
+                data.put("alarmfile", "");
 
                 db.collection("alarms")
                         .add(data)
@@ -273,14 +303,211 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             }
         });
 
+        if(ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+        }
+
+        if(ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+        }
+
+        timestampNow = Timestamp.now().toString();
+        outputFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/alarmrecording.3gp";
+        //outputFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/alarmrecording-" + timestampNow + ".3gp"; // Too long?
+        final StorageReference storageReference = storage.getReference().child(outputFile);
+
+        btn_larmRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(!recording) {
+                    Log.i(TAG, "audio: recording is true, starting routine");
+                    recording = true;
+
+                    myAudioRecorder = new MediaRecorder();
+                    myAudioRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                    myAudioRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                    myAudioRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
+                    myAudioRecorder.setOutputFile(outputFile);
+                    try {
+                        Log.i(TAG, "audio: in try clause, calling prepare() and start()");
+                        myAudioRecorder.prepare();
+                        myAudioRecorder.start();
+                    } catch (IllegalStateException ise) {
+                        // Something
+                        Log.d(TAG, "audio: recording caught IllegalStateException");
+                        return;
+                    } catch (IOException ioe) {
+                        Log.d(TAG, "audio recording caught IOException");
+                        // Something
+                        return;
+                    }
+
+                    btn_larmRecord.setText("Press again to stop and send");
+                } else {
+                    /** BEGIN AUDIO SECTION
+                     *
+                     */
+                    recording = false;
+                    myAudioRecorder.stop();
+                    myAudioRecorder.reset();
+                    //myAudioRecorder.release();
+                    //myAudioRecorder = null;
+
+                    final Uri file = Uri.fromFile(new File(outputFile));
+                    UploadTask uploadTask = storageReference.putFile(file);
+
+                    uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            Log.i(TAG, "audio: uploaded");
+                        }
+                    }).addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Log.d(TAG, "audioUpload: failed to upload");
+                        }
+                    });
+
+                    Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                        @Override
+                        public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                            if (!task.isSuccessful()) {
+                                throw task.getException();
+                            }
+
+                            return storageReference.getDownloadUrl();
+                        }
+                    }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Uri> task) {
+                            if(task.isSuccessful()) {
+                                downloadUri = task.getResult();
+                                Log.i(TAG, "audioUpload: task successful, got " + downloadUri.toString());
+                                //editor.putString("larmRecordURL", downloadUri.toString()).apply(); // Might take a while, so in database call, use variable
+
+                                // START EXPERIMENT WHEN TASK IS SUCCESSFUL
+
+                                if (sharedPreferences.getString("selectedZone", "").equals("")) {
+                                    Log.d(TAG, "firestore: no selected zone");
+                                    return;
+                                }
+                                try {
+                                    encodedUrl = URLEncoder.encode(downloadUri.toString(), "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new AssertionError("UTF-8 not supported");
+                                }
+
+                                Map<String, Object> data = new HashMap<>();
+                                //Map<String, String> data = new HashMap<>();
+                                //data.put("activated", Timestamp.now());
+                                data.put("type", "record");
+                                data.put("source", sharedPreferences.getString("email", ""));
+                                data.put("zone", sharedPreferences.getString("selectedZone", ""));
+                                //data.put("alarmfile", encodedUrl);
+                                data.put("alarmfile", downloadUri.toString());
+                                //Log.i(TAG, "audioUpload: alarmfile in SharedPreferences = " + sharedPreferences.getString("larmRecordURL", ""));
+
+                                db.collection("alarms")
+                                        .add(data)
+                                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                            @Override
+                                            public void onSuccess(DocumentReference documentReference) {
+                                                Log.i(TAG, "firestore: in addOnSuccessListener()");
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Log.i(TAG, "firestore: in addOnFailureListener()");
+                                            }
+                                        });
+
+
+                                // END EXPERIMENT WHEN TASK IS SUCCESSFUL
+                            } else {
+                                // Handle errors
+                                Log.d(TAG, "audioUpload: failed to get download URL");
+                            }
+                        }
+                    });
+
+                    /** END AUDIO SECTION
+                     *
+                     */
+
+                    /** BEGIN DATABASE SECTION
+                     *
+                     */
+                    // EXPERIMENT - MOVE TO WHEN WE HAVE URL - IT WORKED!
+                    // SAVE FOR THE FUTURE
+                    /*
+                    if(downloadUri != null) {
+                        if (sharedPreferences.getString("selectedZone", "").equals("")) {
+                            Log.d(TAG, "firestore: no selected zone");
+                            return;
+                        }
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("activated", Timestamp.now());
+                        data.put("type", "record");
+                        data.put("source", sharedPreferences.getString("email", ""));
+                        data.put("zone", sharedPreferences.getString("selectedZone", ""));
+                        data.put("alarmfile", downloadUri.toString());
+                        //Log.i(TAG, "audioUpload: alarmfile in SharedPreferences = " + sharedPreferences.getString("larmRecordURL", ""));
+
+                        db.collection("alarms")
+                                .add(data)
+                                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                    @Override
+                                    public void onSuccess(DocumentReference documentReference) {
+                                        Log.i(TAG, "firestore: in addOnSuccessListener()");
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.i(TAG, "firestore: in addOnFailureListener()");
+                                    }
+                                });
+                    }
+                    */
+                    // END EXPERIMENT - MOVE TO WHEN WE HAVE URL
+                    /** END DATABASE SECTION
+                     *
+                     */
+
+                    MediaPlayer mediaPlayer2 = new MediaPlayer();
+                    try {
+                        Log.i(TAG, "audio: playback calling setDataSource with " + outputFile);
+                        mediaPlayer2.setDataSource(outputFile);
+                        //mediaPlayer2.prepareAsync();
+                        mediaPlayer2.prepare();
+                        mediaPlayer2.start();
+                        //mediaPlayer2.release(); // Where should we call release on the audio objects?
+                    } catch (IllegalStateException ise) {
+                        // Something
+                        Log.d(TAG, "audio: playback caught IllegalStateException");
+                        return;
+                    } catch (IOException ioe) {
+                        // Something
+                        Log.d(TAG, "audio: playback caught IOException");
+                        return;
+                    }
+
+                    btn_larmRecord.setText("Record and larm");
+                }
+            }
+        });
+
         return v;
     }
 
     public void onCompletion(MediaPlayer mp) {
+        mp = null;
     }
 
     public void onPrepared(MediaPlayer mp) {
         mp.start();
+        mp = null;
     }
 
     // TODO: Rename method, update argument and hook method into UI event

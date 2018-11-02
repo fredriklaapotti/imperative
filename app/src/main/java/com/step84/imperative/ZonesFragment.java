@@ -43,11 +43,16 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
+import com.google.gson.JsonObject;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -172,13 +177,16 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         */
         // --- END SUB FIRESTORE ---
         List<String> zones = new ArrayList<>(Constants.ZONES.keySet());
+
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         int spinnerValue = sharedPreferences.getInt("userChoiceSpinner", -1);
         Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
         spinner_zones.setAdapter(dataAdapter);
-        if(spinnerValue != -1) {
+        if(spinnerValue != -1 && spinnerValue < zones.size()) {
             spinner_zones.setSelection(spinnerValue);
+        } else {
+            spinner_zones.setSelection(0);
         }
         // --- END SPINNER LOGIC ---
 
