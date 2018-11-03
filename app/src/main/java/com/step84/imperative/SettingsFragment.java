@@ -23,56 +23,43 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
-import com.google.firebase.firestore.auth.FirebaseAuthCredentialsProvider;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 
 /**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link SettingsFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link SettingsFragment#newInstance} factory method to
- * create an instance of this fragment.
+ * Settings.
+ *
+ * @author fredrik.laapotti@gmail.com
+ * @version 0.1.181103
+ * @since 0.1.181103
  */
 public class SettingsFragment extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
 
-    FirebaseFirestore db = FirebaseFirestore.getInstance();
+    private static final String TAG = SettingsFragment.class.getSimpleName();
+
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
 
-    private Button btn_setEmail;
-    private Button btn_fetchToken;
     private EditText txt_email;
     private EditText txt_password;
-    private TextView txt_token;
-    private String token;
-    private String userEmail;
 
     private Button btn_userCreate;
     private Button btn_userLogin;
     private Button btn_userLogout;
     private Button btn_userVerify;
-
-    private static String TAG = "SettingsFragment";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
 
     private OnFragmentInteractionListener mListener;
 
@@ -88,7 +75,6 @@ public class SettingsFragment extends Fragment {
      * @param param2 Parameter 2.
      * @return A new instance of fragment SettingsFragment.
      */
-    // TODO: Rename and change types and number of parameters
     public static SettingsFragment newInstance(String param1, String param2) {
         SettingsFragment fragment = new SettingsFragment();
         Bundle args = new Bundle();
@@ -101,27 +87,26 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        /*
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            String mParam1 = getArguments().getString(ARG_PARAM1);
+            String mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        */
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        /** Probably handle logic for a user logged in here.. or in MainActivity and HomeFragment
-         *
-         */
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
 
         txt_email = v.findViewById(R.id.txt_email);
         txt_password = v.findViewById(R.id.txt_password);
-        txt_token = v.findViewById(R.id.txt_token);
-        btn_setEmail = v.findViewById(R.id.btn_setEmail);
-        btn_fetchToken = v.findViewById(R.id.btn_fetchToken);
+        TextView txt_token = v.findViewById(R.id.txt_token);
+        Button btn_setEmail = v.findViewById(R.id.btn_setEmail);
+        Button btn_fetchToken = v.findViewById(R.id.btn_fetchToken);
 
         btn_userCreate = v.findViewById(R.id.btn_userCreate);
         btn_userLogin = v.findViewById(R.id.btn_userLogin);
@@ -130,33 +115,23 @@ public class SettingsFragment extends Fragment {
 
         updateUI(currentUser);
 
-        // Obviously we should fetch this from database or local storage first
-        //txt_email.setText("fredrik.laapotti@gmail.com");
-
-        // --------------------------- START SHARED PREFERENCES -------------
-        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
         editor = sharedPreferences.edit();
-        token = sharedPreferences.getString("token","-1");
+        String token = sharedPreferences.getString("token","-1");
         Log.d(TAG,"Shared preferences token: " + token);
         txt_token.setText(token);
 
-        userEmail = sharedPreferences.getString("email","");
+        String userEmail = sharedPreferences.getString("email","");
         if(userEmail.equals("")) {
             txt_email.setText("no email registered");
         } else {
             txt_email.setText(userEmail);
         }
-        // --------------------------- END SHARED PREFERENCES -------------
 
-        /** EXPERIMENT: USER AUTH
-         *
-         */
         btn_userCreate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /** TODO: string check
-                 *
-                 */
+                // TODO: string checking
                 mAuth.createUserWithEmailAndPassword(txt_email.getText().toString(), txt_password.getText().toString())
                         .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                             @Override
@@ -168,7 +143,7 @@ public class SettingsFragment extends Fragment {
                                 } if(task.getException() instanceof FirebaseAuthUserCollisionException) {
                                     Log.d(TAG, "auth: createuserwithemail: user already exists");
                                 } else {
-                                    Log.d(TAG, "auth: createuserwithemail: failed with " + task.getException().getMessage());
+                                    Log.d(TAG, "auth: createuserwithemail: failed with " + Objects.requireNonNull(task.getException()).getMessage());
                                     updateUI(null);
                                 }
                             }
@@ -179,10 +154,7 @@ public class SettingsFragment extends Fragment {
         btn_userLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /** TODO: implement error checking on fields
-                 *
-                 */
-
+                // TODO: error check fields
                 mAuth.signInWithEmailAndPassword(txt_email.getText().toString(), txt_password.getText().toString())
                         .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                             @Override
@@ -227,20 +199,11 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        /** END EXPERIMENT: USER AUTH
-         *
-         */
-
-        /** TODO: fetch e-mail, token and add to firestore
-         *
-         */
+        // TODO: implement other methods to deprecate this one
         btn_setEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                /** We start off by clearing all subscriptions on the device
-                 *
-                 */
                 for(Zone zone : Constants.zoneArrayList) {
                     zone.setSubscribed(false);
                 }
@@ -264,40 +227,7 @@ public class SettingsFragment extends Fragment {
                                 Log.d("MINDEBUG", "Error adding document");
                             }
                 });
-
-                CommonFunctions.updateSubscriptionsFromFirestore(TAG, "users", sharedPreferences.getString("email", ""));
-
-                /*
-                FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                        if(!task.isSuccessful()) {
-                            Log.w("Messaging", "getInstanceId failed", task.getException());
-                        }
-
-                        String token = task.getResult().getToken();
-                        Log.d("FCM message token", token);
-                        editor.putString("token", token);
-                        editor.commit();
-
-                        Map<String, Object> deviceInfo = new HashMap<>();
-                        deviceInfo.put("email", "fredrik.laapotti@gmail.com");
-                        deviceInfo.put("FCMtoken", token);
-                        deviceInfo.put("updateTimestamp", Timestamp.now());
-                        db.collection("devices").add(deviceInfo).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                            @Override
-                            public void onSuccess(DocumentReference documentReference) {
-                                Log.d("MINDEBUG", "Snapshot written with id:" + documentReference.getId());
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Log.d("MINDEBUG", "Error adding document");
-                            }
-                        });
-                    }
-                });
-                */
+                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString("email", ""));
             }
         });
 
@@ -308,7 +238,7 @@ public class SettingsFragment extends Fragment {
                     @Override
                     public void onComplete(@NonNull Task<InstanceIdResult> task) {
                         if(task.isSuccessful()) {
-                            String token = task.getResult().getToken();
+                            String token = Objects.requireNonNull(task.getResult()).getToken();
                             Log.i(TAG, "firestore: successfully fetched new token: " + token);
                             editor.putString("token", token).apply();
                             txt_token.setText(token);
@@ -318,27 +248,6 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        /*
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("email", txt_email.getText().toString());
-        Log.d(TAG,"txt_email value: " + txt_email.getText());
-        */
-
-        /*
-        db.collection("users")
-        .add(userInfo)
-        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-            @Override
-            public void onSuccess(DocumentReference documentReference) {
-                    Log.d(TAG, "Snapshot written with id:" + documentReference.getId());
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                Log.d("MINDEBUG", "Error adding document");
-            }
-        });
-        */
         return v;
     }
 
@@ -347,6 +256,7 @@ public class SettingsFragment extends Fragment {
             btn_userCreate.setVisibility(View.GONE);
             btn_userLogin.setVisibility(View.GONE);
             btn_userLogout.setVisibility(View.VISIBLE);
+
             if(firebaseUser.isEmailVerified()) {
                 btn_userVerify.setVisibility(View.GONE);
             } else {
@@ -365,7 +275,6 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
             mListener.onFragmentInteraction(uri);
@@ -400,7 +309,6 @@ public class SettingsFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
 }

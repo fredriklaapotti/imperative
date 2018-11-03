@@ -1,27 +1,35 @@
+/*
+ * Intent service for geofence intents.
+ */
 package com.step84.imperative;
 
 import android.app.IntentService;
-import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.NonNull;
-import android.support.v4.app.JobIntentService;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service to handle geofence intents.
+ * Used for the moment since I couldn't get the JobIntentService to work.
+ *
+ * @author fredrik.laapotti@gmail.com
+ * @version 0.1.181103
+ * @since 0.1.181103
+ */
 public class GeofenceTransitionsIntentService extends IntentService {
-    private static final int JOB_ID = 573;
-    private static final String TAG = "GeofenceTransitionsIS";
-    private static final String CHANNEL_ID = "channel_01";
+    //private static final int JOB_ID = 573;
+    private static final String TAG = GeofenceTransitionsIntentService.class.getSimpleName();
+    //private static final String CHANNEL_ID = "channel_01";
 
+    /**
+     * Dummy constructor.
+     */
     public GeofenceTransitionsIntentService() {
         super(TAG);
         //Log.i(TAG, "geofence: constructor intent service");
@@ -34,6 +42,11 @@ public class GeofenceTransitionsIntentService extends IntentService {
     }
     */
 
+    /**
+     * Handles geofence intents.
+     *
+     * @param intent Geofence intent.
+     */
     @Override
     protected void onHandleIntent(Intent intent) {
         Log.i(TAG, "geofence: in onHandleIntent IntentService");
@@ -56,32 +69,9 @@ public class GeofenceTransitionsIntentService extends IntentService {
                 Log.i(TAG, "geofence: ENTER: " + geofence.toString());
             }
 
-
-            /**
-             * IMPLEMENT SUBSCRIPTION BASED ON GEOFENCE
-             */
-
-            /*
-            FirebaseMessaging.getInstance().subscribeToTopic(selected)
-                    .addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if(task.isSuccessful()) {
-                                editor.putBoolean(sharedPreferences.getString("selectedZone", ""), true).apply();
-                                Log.i(TAG, "firestore: successfully subscribed to topic " + sharedPreferences.getString("selectedZone", ""));
-                            }
-                        }
-                    });
-
-            */
-            /**
-             * END IMPLEMENT SUBSCRIPTION BASED ON GEOFENCE
-             */
-
-
         } else if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
-            String geofenceTransitionDetails = getGeofenceTransitionDetails(geofenceTransition, triggeringGeofences);
+            //String geofenceTransitionDetails = getGeofenceTransitionDetails(geofenceTransition, triggeringGeofences);
 
             for(Geofence geofence : triggeringGeofences) {
                 Log.i(TAG, "geofence: EXIT: " + geofence.toString());
@@ -91,6 +81,13 @@ public class GeofenceTransitionsIntentService extends IntentService {
         }
     }
 
+    /**
+     * Returns stringified details about the transition.
+     *
+     * @param geofenceTransition Transition integer.
+     * @param triggeringGeofences List of Geofence objects.
+     * @return Stringified transition details.
+     */
     private String getGeofenceTransitionDetails(int geofenceTransition, List<Geofence> triggeringGeofences) {
         //Log.i(TAG, "geofence: ENTRY: getGeofenceTransitionDetails");
         String geofenceTransitionString = getTransitionString(geofenceTransition);
@@ -102,6 +99,12 @@ public class GeofenceTransitionsIntentService extends IntentService {
         return geofenceTransitionString + ": " + triggeringGeofencesIdsString;
     }
 
+    /**
+     * Returns transition string based on type.
+     *
+     * @param transitionType Type of transition.
+     * @return Stringified version of the transition.
+     */
     private String getTransitionString(int transitionType) {
         //Log.i(TAG, "geofence: ENTRY: getTransitionString");
         switch (transitionType) {

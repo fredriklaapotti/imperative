@@ -1,8 +1,13 @@
+/*
+ * JobIntentService for geofence intents.
+ * Currently not used, using IntentService.
+ */
 package com.step84.imperative;
 
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.JobIntentService;
 import android.text.TextUtils;
@@ -14,18 +19,33 @@ import com.google.android.gms.location.GeofencingEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JobIntentService for geofence transitions.
+ * Currently not used, using IntentService.
+ */
 public class GeofenceTransitionsJobIntentService extends JobIntentService {
     private static final int JOB_ID = 573;
     private static final String TAG = "GeofenceTransitionsJIS";
-    private static final String CHANNEL_ID = "channel_01";
+    //private static final String CHANNEL_ID = "channel_01";
 
+    /**
+     * Wrapper for enqueueWork().
+     *
+     * @param context App context.
+     * @param intent Intent from geofence.
+     */
     public static void enqueueWork(Context context, Intent intent) {
         Log.i(TAG, "geofence: enqueueWork()");
         enqueueWork(context, GeofenceTransitionsJobIntentService.class, JOB_ID, intent);
     }
 
+    /**
+     * Handle intent.
+     *
+     * @param intent Intent from enqueueWork()? Research.
+     */
     @Override
-    protected void onHandleWork(Intent intent) {
+    protected void onHandleWork(@NonNull Intent intent) {
         Log.i(TAG, "geofence: in onHandleWork JobIntentService");
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if(geofencingEvent.hasError()) {
@@ -46,6 +66,13 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         }
     }
 
+    /**
+     * Returns stringified transition details.
+     *
+     * @param geofenceTransition Transition type.
+     * @param triggeringGeofences List of Geofence objects.
+     * @return String with transition details.
+     */
     private String getGeofenceTransitionDetails(int geofenceTransition, List<Geofence> triggeringGeofences) {
         Log.i(TAG, "geofence: ENTRY: getGeofenceTransitionDetails");
         String geofenceTransitionString = getTransitionString(geofenceTransition);
@@ -57,6 +84,12 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         return geofenceTransitionString + ": " + triggeringGeofencesIdsString;
     }
 
+    /**
+     * Wrapper for formatting return string.
+     *
+     * @param transitionType Type of transition.
+     * @return Stringified details.
+     */
     private String getTransitionString(int transitionType) {
         Log.i(TAG, "geofence: ENTRY: getTransitionString");
         switch (transitionType) {
@@ -72,18 +105,35 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         }
     }
 
+    /**
+     * Binds the service and queues work? Research.
+     *
+     * @param intent Intent from?
+     * @return Research this one.
+     */
     @Override
-    public IBinder onBind(Intent intent) {
+    public IBinder onBind(@NonNull Intent intent) {
         Log.i(TAG, "geofence: onBind()");
         enqueueWork(getApplicationContext(), intent);
         return null;
     }
 
+    /**
+     * onCreate for a service? Perhaps JobIntentService does this. Research.
+     */
     @Override
     public void onCreate() {
         Log.i(TAG, "geofence: onCreate()");
     }
 
+    /**
+     * Research this method and everything else related to JobIntentService.
+     *
+     * @param intent Intent
+     * @param flags Flags
+     * @param startId startId
+     * @return Return integer.
+     */
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         return super.onStartCommand(intent, flags, startId);

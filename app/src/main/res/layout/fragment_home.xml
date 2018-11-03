@@ -7,15 +7,6 @@
 
     <!-- TODO: Update blank fragment layout -->
 
-        <Button
-            android:id="@+id/btn_addGeofences"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
-            android:text="AGF"
-            android:visibility="invisible" />
-
     <Button
         android:id="@+id/btn_larmPreset"
         android:layout_width="247dp"
@@ -23,7 +14,6 @@
         android:layout_alignParentBottom="true"
         android:layout_marginStart="-17dp"
         android:layout_marginBottom="99dp"
-        android:layout_toEndOf="@+id/btn_addGeofences"
         android:text="Larm PRESET" />
 
     <Button
