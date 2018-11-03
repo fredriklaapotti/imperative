@@ -44,6 +44,13 @@ import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 import java.util.Objects;
 
+/**
+ * MainActivity.
+ *
+ * @author fredrik.laapotti@gmail.com
+ * @version 0.1.181103
+ * @since 0.1.181103
+ */
 public class MainActivity
         extends AppCompatActivity
         implements HomeFragment.OnFragmentInteractionListener,
@@ -126,8 +133,6 @@ public class MainActivity
         editor.putString("isMapReady", "false");
         editor.apply();
 
-        //geofenceJSONObject = new JSONObject();
-
         FirebaseFirestore firestore = FirebaseFirestore.getInstance();
         FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
                 .setTimestampsInSnapshotsEnabled(true)
@@ -148,6 +153,10 @@ public class MainActivity
         mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
+                if(!Constants.REQUESTINGLOCATIONUPDATES) {
+                    startLocationUpdates();
+                }
+
                 if(locationResult == null) {
                     return;
                 }
@@ -207,6 +216,7 @@ public class MainActivity
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
             mRequestingLocationUpdates = true;
+            Constants.REQUESTINGLOCATIONUPDATES = true;
         }
     }
 
@@ -304,8 +314,6 @@ public class MainActivity
      * Populate from Firestore collection zones and add to Constants.zoneArrayList.
      */
     private void populateGeofenceListFromFirestore() {
-        //JSONArray geofenceJSONArray = new JSONArray();
-
         db.collection("zones").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {

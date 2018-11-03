@@ -19,4 +19,9 @@
 
     <string name="txt_desc_email">E-mail</string>
     <string name="txt_desc_token">Token</string>
+
+    <string name="error_requiredEmail">Required</string>
+    <string name="error_requiredPassword">Required</string>
+    <string name="error_createUserFailed">Failed to create user</string>
+    <string name="error_loginUserFailed">Failed to login</string>
 </resources>

@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -113,6 +115,7 @@ public class SettingsFragment extends Fragment {
         btn_userLogout = v.findViewById(R.id.btn_userLogout);
         btn_userVerify = v.findViewById(R.id.btn_userVerify);
 
+        currentUser = mAuth.getCurrentUser();
         updateUI(currentUser);
 
         sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
@@ -121,7 +124,7 @@ public class SettingsFragment extends Fragment {
         Log.d(TAG,"Shared preferences token: " + token);
         txt_token.setText(token);
 
-        String userEmail = sharedPreferences.getString("email","");
+        String userEmail = sharedPreferences.getString(Constants.SP_EMAIL,"");
         if(userEmail.equals("")) {
             txt_email.setText("no email registered");
         } else {
@@ -131,7 +134,10 @@ public class SettingsFragment extends Fragment {
         btn_userCreate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // TODO: string checking
+                if(!validateForm()) {
+                    return;
+                }
+
                 mAuth.createUserWithEmailAndPassword(txt_email.getText().toString(), txt_password.getText().toString())
                         .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                             @Override
@@ -140,9 +146,12 @@ public class SettingsFragment extends Fragment {
                                     Log.i(TAG, "auth: createuserwithemail: success");
                                     FirebaseUser user = mAuth.getCurrentUser();
                                     updateUI(user);
+                                    updateUserDb();
+                                    CommonFunctions.updateSubscriptionsFromFirestore("users", txt_email.getText().toString());
                                 } if(task.getException() instanceof FirebaseAuthUserCollisionException) {
                                     Log.d(TAG, "auth: createuserwithemail: user already exists");
                                 } else {
+                                    Toast.makeText(getContext(), R.string.error_createUserFailed, 5).show();
                                     Log.d(TAG, "auth: createuserwithemail: failed with " + Objects.requireNonNull(task.getException()).getMessage());
                                     updateUI(null);
                                 }
@@ -154,7 +163,10 @@ public class SettingsFragment extends Fragment {
         btn_userLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // TODO: error check fields
+                if(!validateForm()) {
+                    return;
+                }
+
                 mAuth.signInWithEmailAndPassword(txt_email.getText().toString(), txt_password.getText().toString())
                         .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                             @Override
@@ -163,7 +175,10 @@ public class SettingsFragment extends Fragment {
                                     Log.i(TAG, "auth: signinwithemail: success");
                                     FirebaseUser user = mAuth.getCurrentUser();
                                     updateUI(user);
+                                    updateUserDb();
+                                    CommonFunctions.updateSubscriptionsFromFirestore("users",txt_email.getText().toString());
                                 } else {
+                                    Toast.makeText(getContext(), R.string.error_loginUserFailed, 5).show();
                                     Log.d(TAG, "auth: signinwithemail: failed");
                                     updateUI(null);
                                 }
@@ -181,13 +196,17 @@ public class SettingsFragment extends Fragment {
             public void onClick(View v) {
                 Log.i(TAG, "auth: signout");
                 mAuth.signOut();
+                sharedPreferences.edit().putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply(); // If user logs out, uses email in text. Add security.
                 updateUI(null);
+                updateUserDb();
+                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
             }
         });
 
         btn_userVerify.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                sharedPreferences.edit().putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();
                 if(currentUser != null) {
                     if (!currentUser.isEmailVerified()) {
                         Log.i(TAG, "auth: current user not email verified, calling sendEmailVerification()");
@@ -203,31 +222,9 @@ public class SettingsFragment extends Fragment {
         btn_setEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                for(Zone zone : Constants.zoneArrayList) {
-                    zone.setSubscribed(false);
-                }
-                editor.putString("email", txt_email.getText().toString()).apply();
-                //Log.i(TAG, "firestore geofence: geofencesJSON in SharedPrefs = " + sharedPreferences.getString("geofencesJSON", ""));
-
-                Map<String, Object> userInfo = new HashMap<>();
-                userInfo.put("email", txt_email.getText().toString());
-                userInfo.put("lastUpdated", Timestamp.now());
-
-                db.collection("users").document(txt_email.getText().toString())
-                        .set(userInfo, SetOptions.merge())
-                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                Log.d(TAG, "Snapshot written");
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Log.d("MINDEBUG", "Error adding document");
-                            }
-                });
-                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString("email", ""));
+                updateUserDb();
+                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
+                updateUI(mAuth.getCurrentUser());
             }
         });
 
@@ -251,6 +248,31 @@ public class SettingsFragment extends Fragment {
         return v;
     }
 
+    private void updateUserDb() {
+        for(Zone zone : Constants.zoneArrayList) {
+            zone.setSubscribed(false);
+        }
+        editor.putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("email", txt_email.getText().toString());
+        userInfo.put("lastUpdated", Timestamp.now());
+
+        db.collection("users").document(txt_email.getText().toString())
+                .set(userInfo, SetOptions.merge())
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d(TAG, "Created or updated user document");
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.d(TAG, "Error adding document");
+            }
+        });
+    }
+
     private void updateUI(FirebaseUser firebaseUser) {
         if(firebaseUser != null) {
             btn_userCreate.setVisibility(View.GONE);
@@ -263,6 +285,9 @@ public class SettingsFragment extends Fragment {
                 btn_userVerify.setVisibility(View.VISIBLE);
             }
 
+            editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
+            editor.putString(Constants.SP_EMAIL, firebaseUser.getEmail()).apply();
+
             Log.i(TAG, "auth: firebaseUser != null");
             Log.i(TAG, "auth: firebaseuser: " + firebaseUser.getEmail() + " " + firebaseUser.getMetadata());
         } else {
@@ -271,8 +296,33 @@ public class SettingsFragment extends Fragment {
             btn_userLogout.setVisibility(View.GONE);
             btn_userVerify.setVisibility(View.GONE);
 
+            editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
+            editor.putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();
+
             Log.i(TAG, "auth: firebaseUser == null");
         }
+    }
+
+    private boolean validateForm() {
+        boolean valid = true;
+
+        String email = txt_email.getText().toString();
+        if(TextUtils.isEmpty(email)) {
+            txt_email.setError(getResources().getString(R.string.error_requiredEmail));
+            valid = false;
+        } else {
+            txt_email.setError(null);
+        }
+
+        String password = txt_password.getText().toString();
+        if(TextUtils.isEmpty(password)) {
+            txt_password.setError(getResources().getString(R.string.error_requiredPassword));
+            valid = false;
+        } else {
+            txt_password.setError(null);
+        }
+
+        return valid;
     }
 
     public void onButtonPressed(Uri uri) {

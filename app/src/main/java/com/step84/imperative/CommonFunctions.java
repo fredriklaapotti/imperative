@@ -3,9 +3,15 @@
  */
 package com.step84.imperative;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseUser;
@@ -42,7 +48,7 @@ public class CommonFunctions {
     public static void updateSubscriptionsFromFirestore(String collection, String document) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // TODO: clean up code and find a way to make this loop short and tidy
+        // TODO: make this loop short and tidy
         DocumentReference documentReference = db.collection(collection).document(document);
         documentReference.get()
                 .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -60,25 +66,10 @@ public class CommonFunctions {
                                         for(Map.Entry<Object, Object> oneTopic : topics.entrySet()) {
                                             Log.i(TAG, "firestore geofence: looping topics from database: key = " + oneTopic.getKey() + ", value = " + oneTopic.getValue());
 
-                                            /*
-                                             * So this became quite messy with nested loops
-                                             * However, at the moment it's good enough to iterate over the small set from Firestore
-                                             * and do most of the comparisons on the local zoneArrayList
-                                             * The other way around would involve calling Firestore for _all_ the local stored zones
-                                             */
                                             for(Zone zoneList : Constants.zoneArrayList) {
-                                                //Log.i(TAG, "firestore geofence: inner loop should trigger");
                                                 if(zoneList.getName().equals(oneTopic.getKey())) {
                                                     zoneList.setSubscribed(true);
                                                     Log.i(TAG, "firestore geofence: subscribed to " + zoneList.getName());
-                                                    //Log.i(TAG, "firestore geofence: found match for " + oneTopic.getKey());
-                                                    // This can probably be moved to the fragment? Just do the above for loop again, without subscribing
-                                                    // i.e loop local zones, if it's subscribed, change text
-                                                    /*
-                                                    if(zoneList.getName().equals(selectedItem) {
-                                                        btn_toggleSubscription.setText("unsubscribe");
-                                                    }
-                                                    */
                                                 }
                                             }
                                         }

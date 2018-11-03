@@ -23,23 +23,21 @@ final class Constants {
     private Constants() {
     }
 
-    //private static final String TAG = Constants.class.getSimpleName();
     private static final String PACKAGE_NAME = "com.step84.imperative";
+    public static final String SP_EMAIL = "email";
+    public static final String SP_SELECTEDZONE = "selectedZone";
+    public static final String SP_SPINNERSELECTED = "userChoiceSpinner";
+    public static boolean REQUESTINGLOCATIONUPDATES = false;
+
     static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
     private static final long GEOFENCE_EXPIRATION_IN_HOURS = 12;
 
     static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS = GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
     static final ArrayList<Zone> zoneArrayList = new ArrayList<>();
-    //static final float GEOFENCE_RADIUS_IN_METERS = 100;
-    //static final HashMap<String, LatLng> ZONES = new HashMap<>();
-    //static ArrayList<String> subscribedTopics = new ArrayList<String>();
 
     // TODO: this is necessary at the moment to populate geofences at startup - but it's ugly.
     static {
         zoneArrayList.add(new Zone("placeholder", new LatLng(59.374349, 13.513987), 100, true));
     }
-
-    // TODO: this should be safe to remove, unless we master JSON for database schemas..
-    //static JSONObject zonesJSON;
 }

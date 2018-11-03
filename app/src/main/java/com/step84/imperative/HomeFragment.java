@@ -109,6 +109,8 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         */
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
     }
 
     /**
@@ -128,27 +130,20 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
         Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
         btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
 
         updateUI(currentUser);
 
-        //AudioManager audioManager = (AudioManager)Objects.requireNonNull(getActivity()).getSystemService(Context.AUDIO_SERVICE); // TODO: error handling for getSystemService()
-        //MediaPlayer mediaPlayer = MediaPlayer.create(getActivity(),R.raw.alarmfile);
-
-        //int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-        //int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-
-        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
-        //SharedPreferences.Editor editor = sharedPreferences.edit();
-        String selectedZone = sharedPreferences.getString("selectedZone",""); // TODO: replace with constant from Constants class
+        String selectedZone = sharedPreferences.getString(Constants.SP_SELECTEDZONE,"");
 
         for(Zone zone : Constants.zoneArrayList) {
             if(selectedZone.equals(zone.getName()) && zone.getSubscribed()) {
-                String spinnerText = selectedZone + getString(R.string.spinner_subscribed);
-                txtSelectedZone.setText(spinnerText);
+                String zoneText = selectedZone + getString(R.string.spinner_subscribed);
+                txtSelectedZone.setText(zoneText);
                 break;
             } else {
-                String spinnerText = selectedZone + getString(R.string.spinner_unsubscribed);
-                txtSelectedZone.setText(spinnerText);
+                String zoneText = selectedZone + getString(R.string.spinner_unsubscribed);
+                txtSelectedZone.setText(zoneText);
             }
         }
 
@@ -157,7 +152,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             public void onClick(View v) {
                 Log.i(TAG, "firestore: alarm button clicked");
 
-                if(sharedPreferences.getString("selectedZone", "").equals("")) {
+                if(sharedPreferences.getString(Constants.SP_SELECTEDZONE, "").equals("")) {
                     Log.d(TAG, "firestore: no selected zone");
                     return;
                 }
@@ -165,7 +160,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 //data.put("activated", Timestamp.now());
                 data.put("type", "preset");
                 data.put("source", sharedPreferences.getString("email",""));
-                data.put("zone", sharedPreferences.getString("selectedZone", ""));
+                data.put("zone", sharedPreferences.getString(Constants.SP_SELECTEDZONE, ""));
                 data.put("alarmfile", "");
 
                 db.collection("alarms")
@@ -287,7 +282,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                                 downloadUri = task.getResult();
                                 Log.i(TAG, "audioUpload: task successful, got " + Objects.requireNonNull(downloadUri).toString());
 
-                                if (sharedPreferences.getString("selectedZone", "").equals("")) {
+                                if (sharedPreferences.getString(Constants.SP_SELECTEDZONE, "").equals("")) {
                                     Log.d(TAG, "firestore: no selected zone");
                                     return;
                                 }
@@ -304,7 +299,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                                 //data.put("activated", Timestamp.now());
                                 data.put("type", "record");
                                 data.put("source", sharedPreferences.getString("email", ""));
-                                data.put("zone", sharedPreferences.getString("selectedZone", ""));
+                                data.put("zone", sharedPreferences.getString(Constants.SP_SELECTEDZONE, ""));
                                 //data.put("alarmfile", encodedUrl); // TODO: research differences between encoding the URL or leaving as-is
                                 data.put("alarmfile", downloadUri.toString());
 

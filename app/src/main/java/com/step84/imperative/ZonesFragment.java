@@ -16,7 +16,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.Toast;
 
+import com.google.android.gms.common.internal.service.Common;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -101,18 +103,15 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_zones, container, false);
 
-        //final Map<String, Boolean> enableAlarm = new HashMap<>();
-
         sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
-        editor = sharedPreferences.edit();
+        CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
 
         btn_toggleSubscription = v.findViewById(R.id.btn_toggleSubscription);
-
         btn_toggleSubscription.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String selected = sharedPreferences.getString("selectedZone", "");
-                if(btn_toggleSubscription.getText().equals("subscribe")) {
+                String selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+                if(btn_toggleSubscription.getText().toString().equals(getString(R.string.btn_toggleSubscriptionSubscribe))) {
                     FirebaseMessaging.getInstance().subscribeToTopic(selected)
                             .addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override
@@ -122,7 +121,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                         Map<String, Object> topic = new HashMap<>();
                                         topic.put(selected, Timestamp.now());
                                         topics.put("topics", topic);
-                                        db.collection("users").document(sharedPreferences.getString("email", "")).set(topics, SetOptions.merge());
+                                        db.collection("users").document(sharedPreferences.getString(Constants.SP_EMAIL, "")).set(topics, SetOptions.merge());
 
                                         // TODO: redesign, is it possible to loop over a list of objects in the object class?
                                         for(Zone zone : Constants.zoneArrayList) {
@@ -131,12 +130,12 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                             }
                                         }
 
-                                        Log.i(TAG, "firestore: successfully subscribed to topic " + sharedPreferences.getString("selectedZone", "") + "and updated database");
+                                        Log.i(TAG, "firestore: successfully subscribed to topic " + sharedPreferences.getString(Constants.SP_SELECTEDZONE, "") + "and updated database");
                                         btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionUnsubscribe);
                                     }
                                 }
                             });
-                } else if(btn_toggleSubscription.getText().equals("unsubscribe")) {
+                } else if(btn_toggleSubscription.getText().toString().equals(getString(R.string.btn_toggleSubscriptionUnsubscribe))) {
                     FirebaseMessaging.getInstance().unsubscribeFromTopic(selected)
                             .addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override
@@ -146,7 +145,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                         Map<String, Object> topic = new HashMap<>();
                                         topic.put(selected, FieldValue.delete());
                                         topics.put("topics", topic);
-                                        db.collection("users").document(sharedPreferences.getString("email", "")).set(topics, SetOptions.merge());
+                                        Log.i(TAG, "firestore geofence: TRYING TO UNSUBSCRIBE" + sharedPreferences.getString(Constants.SP_EMAIL, ""));
+                                        db.collection("users").document(sharedPreferences.getString(Constants.SP_EMAIL, "")).set(topics, SetOptions.merge());
 
                                         for(Zone zone : Constants.zoneArrayList) {
                                             if (zone.getName().equals(selected)) {
@@ -154,7 +154,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                             }
                                         }
 
-                                        Log.i(TAG, "firestore: successfully unsubscribed to topic " + sharedPreferences.getString("selectedZone", "") + "and updated database");
+                                        Log.i(TAG, "firestore: successfully unsubscribed to topic " + sharedPreferences.getString(Constants.SP_SELECTEDZONE, "") + "and updated database");
                                         btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
                                     }
                                 }
@@ -162,7 +162,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                 } else {
                     return;
                 }
-                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString("email", ""));
+                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
                 updateSubscriptionText();
             }
         });
@@ -178,7 +178,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        int spinnerValue = sharedPreferences.getInt("userChoiceSpinner", -1);
+        int spinnerValue = sharedPreferences.getInt(Constants.SP_SPINNERSELECTED, -1);
         Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
         spinner_zones.setAdapter(dataAdapter);
         if(spinnerValue != -1 && spinnerValue < zones.size()) {
@@ -186,6 +186,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         } else {
             spinner_zones.setSelection(0);
         }
+
+        updateSubscriptionText();
 
         return v;
     }
@@ -281,40 +283,24 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
         editor = sharedPreferences.edit();
 
-        CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString("email", ""));
-        updateSubscriptionText();
-
         String selected = parent.getItemAtPosition(pos).toString();
         int userChoice = parent.getSelectedItemPosition();
-        editor.putString("selectedZone", selected).apply();
-        editor.putInt("userChoiceSpinner", userChoice).apply();
+        editor.putString(Constants.SP_SELECTEDZONE, selected).apply();
+        editor.putInt(Constants.SP_SPINNERSELECTED, userChoice).apply();
 
-        /*
-         * Iterate over all the known zones
-         * The zoneArrayList is populated in MainActivity.populateGeofencesFromFirestore
-         */
-        for(Zone zone : Constants.zoneArrayList) {
-            if(zone.getName().equals(selected)) {
-                if(zone.getSubscribed()) {
-                    btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionUnsubscribe);
-                } else {
-                    btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
-                }
-            }
-        }
-
-        CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString("email", ""));
         updateSubscriptionText();
     }
 
     public void onNothingSelected(AdapterView<?> parent) {
-
     }
 
     private void updateSubscriptionText() {
+        Log.i(TAG, "firestore geofence: CALLING updateSubscriptionText");
+        btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
         for(Zone zone : Constants.zoneArrayList) {
             if(zone.getSubscribed() && zone.getName().equals(spinner_zones.getSelectedItem().toString())) {
-                btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
+                Log.i(TAG, "firestore geofence: IN INNER LOOP");
+                btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionUnsubscribe);
             }
         }
     }

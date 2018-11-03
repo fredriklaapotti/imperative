@@ -5,8 +5,6 @@
     android:layout_height="match_parent"
     tools:context=".HomeFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-
     <Button
         android:id="@+id/btn_larmPreset"
         android:layout_width="247dp"
