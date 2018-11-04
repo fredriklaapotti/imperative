@@ -5,8 +5,10 @@ import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -20,9 +22,11 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
@@ -64,6 +68,7 @@ public class MainActivity
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     private FusedLocationProviderClient mFusedLocationClient;
+    private LocationRequest mLocationRequest;
     private Location currentLocation;
     private boolean mRequestingLocationUpdates;
     private LocationCallback mLocationCallback;
@@ -183,6 +188,18 @@ public class MainActivity
         populateGeofenceListFromFirestore();
         mGeofencingClient = LocationServices.getGeofencingClient(this);
 
+        // EXPERIMENT
+        BroadcastReceiver messageReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String intentMessage = intent.getStringExtra("zone");
+                Log.i(TAG, "geofence: got onReceive() in MainActivity, intentMessage = " + intentMessage);
+                Toast.makeText(context, intentMessage, Toast.LENGTH_LONG).show();
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, new IntentFilter("geofence-update"));
+        // END EXPERIMENT
+
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
         HomeFragment homeFragment = new HomeFragment();
         switchFragment(homeFragment);
@@ -205,18 +222,27 @@ public class MainActivity
     @Override
     protected void onResume() {
         super.onResume();
-        if(mRequestingLocationUpdates) {
+        // 181104: changed behaviour to always request location updates, but at a slower interval
+        startLocationUpdates();
+        /*
+        if(!mRequestingLocationUpdates) {
+            Toast.makeText(getApplicationContext(), "In onResume, calling startLocationUpdates()", 10).show();
             startLocationUpdates();
         }
+        */
+
     }
 
     private void startLocationUpdates() {
-        LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(1000);
-        mLocationRequest.setFastestInterval(1000);
+        Log.i(TAG, "LOCATION: in startLocationUpdates()");
+        //LocationRequest mLocationRequest = new LocationRequest(); // Changed 181104, try with class-private variable instad
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(10000);
+        mLocationRequest.setFastestInterval(5000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
+            Log.i(TAG, "LOCATION: in startLocationUpdates(), mLocationRequest settings = " + mLocationRequest.getPriority());
             mRequestingLocationUpdates = true;
             Constants.REQUESTINGLOCATIONUPDATES = true;
         }
@@ -269,8 +295,16 @@ public class MainActivity
     public void onPause() {
         super.onPause();
         if(mFusedLocationClient != null) {
-            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-            mRequestingLocationUpdates = false;
+            //mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+            //mRequestingLocationUpdates = false;
+
+            // Added 181104, continue location updates in background
+            if(mLocationRequest != null) {
+                mLocationRequest.setInterval(60 * 1000);
+                mLocationRequest.setFastestInterval(5 * 1000);
+                mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                Log.i(TAG, "LOCATION: in onPause(), mLocationRequest settings = " + mLocationRequest.getPriority());
+            }
         }
     }
 
@@ -391,10 +425,10 @@ public class MainActivity
         // Create the NotificationChannel, but only on API 26+ because
         // the NotificationChannel class is new and not in the support library
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Imperative"; // Should change to getString(R.something..)
-            String description = "Notification channel for alarms"; // Should change to getString(R.something..)
+            CharSequence name = getString(R.string.app_name); // Should change to getString(R.something..)
+            String description = getString(R.string.notification_channel_description); // Should change to getString(R.something..)
             int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel("Imperative", name, importance);
+            NotificationChannel channel = new NotificationChannel(getString(R.string.app_name), name, importance);
             channel.setDescription(description);
             // Register the channel with the system; you can't change the importance
             // or other notification behaviors after this

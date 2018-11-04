@@ -22,12 +22,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
@@ -131,6 +133,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
         btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        //Toast.makeText(getContext(), "In onResume", 10);
 
         updateUI(currentUser);
 
@@ -157,7 +160,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                     return;
                 }
                 Map<String, Object> data = new HashMap<>();
-                //data.put("activated", Timestamp.now());
+                data.put("activated", Timestamp.now());
                 data.put("type", "preset");
                 data.put("source", sharedPreferences.getString("email",""));
                 data.put("zone", sharedPreferences.getString(Constants.SP_SELECTEDZONE, ""));
@@ -186,7 +189,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                 Log.i(TAG, "firestore: alarm larmCustom button clicked");
 
                 Map<String, Object> data = new HashMap<>();
-                //data.put("activated", Timestamp.now());
+                data.put("activated", Timestamp.now());
                 data.put("type", "preset");
                 data.put("source", sharedPreferences.getString("email",""));
                 data.put("zone", "stadshuset");
@@ -296,7 +299,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                                 */
 
                                 Map<String, Object> data = new HashMap<>();
-                                //data.put("activated", Timestamp.now());
+                                data.put("activated", Timestamp.now());
                                 data.put("type", "record");
                                 data.put("source", sharedPreferences.getString("email", ""));
                                 data.put("zone", sharedPreferences.getString(Constants.SP_SELECTEDZONE, ""));

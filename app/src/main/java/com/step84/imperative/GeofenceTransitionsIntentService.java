@@ -5,8 +5,12 @@ package com.step84.imperative;
 
 import android.app.IntentService;
 import android.content.Intent;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
@@ -58,6 +62,8 @@ public class GeofenceTransitionsIntentService extends IntentService {
             return;
         }
 
+        Intent broadcastIntent = new Intent("geofence-update");
+
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
         if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
@@ -67,14 +73,37 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
             for(Geofence geofence : triggeringGeofences) {
                 Log.i(TAG, "geofence: ENTER: " + geofence.toString());
+                Log.i(TAG, "geofence: ENTER: sending broadcast message");
+                broadcastIntent.putExtra("zone", geofenceTransitionDetails);
+                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
+
+                NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, getString(R.string.app_name))
+                        .setSmallIcon(R.drawable.ic_launcher_background)
+                        .setContentTitle("Geofence enter")
+                        .setContentText(geofenceTransitionDetails)
+                        .setPriority(NotificationCompat.PRIORITY_MAX);
+                NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
+                notificationManagerCompat.notify(1, mBuilder.build());
             }
 
         } else if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
-            //String geofenceTransitionDetails = getGeofenceTransitionDetails(geofenceTransition, triggeringGeofences);
+            String geofenceTransitionDetails = getGeofenceTransitionDetails(geofenceTransition, triggeringGeofences);
+            Log.i(TAG, geofenceTransitionDetails);
 
             for(Geofence geofence : triggeringGeofences) {
                 Log.i(TAG, "geofence: EXIT: " + geofence.toString());
+                Log.i(TAG, "geofence: EXIT: sending broadcast message");
+                broadcastIntent.putExtra("zone", geofenceTransitionDetails);
+                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
+
+                NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, getString(R.string.app_name))
+                        .setSmallIcon(R.drawable.ic_launcher_background)
+                        .setContentTitle("Geofence exit")
+                        .setContentText(geofenceTransitionDetails)
+                        .setPriority(NotificationCompat.PRIORITY_MAX);
+                NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
+                notificationManagerCompat.notify(1, mBuilder.build());
             }
         } else {
             Log.e(TAG, "geofence transition invalid type");
@@ -110,10 +139,10 @@ public class GeofenceTransitionsIntentService extends IntentService {
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 //return getString(R.string.geofence_transition_entered);
-                return "geofence transition entered";
+                return "geofence enter";
             case Geofence.GEOFENCE_TRANSITION_EXIT:
                 //return getString(R.string.geofence_transition_exited);
-                return "geofence transition exited";
+                return "geofence exit";
             default:
                 //return getString(R.string.unknown_geofence_transition);
                 return "unknown geofence transition";

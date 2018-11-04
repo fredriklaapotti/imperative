@@ -5,6 +5,8 @@
     <string name="title_settings">Settings</string>
     <string name="title_debug">Debug</string>
 
+    <string name="notification_channel_description">Notification channel for Imperative</string>
+
     <string name="btn_userCreate">Create</string>
     <string name="btn_userLogin">Login</string>
     <string name="btn_userLogout">Logout</string>

@@ -305,7 +305,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
     public void onNothingSelected(AdapterView<?> parent) {
     }
 
-    private void updateSubscriptionText() {
+    public void updateSubscriptionText() {
         Log.i(TAG, "firestore geofence: CALLING updateSubscriptionText");
         btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
         for(Zone zone : Constants.zoneArrayList) {

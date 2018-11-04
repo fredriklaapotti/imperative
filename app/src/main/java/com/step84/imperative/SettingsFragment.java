@@ -167,6 +167,7 @@ public class SettingsFragment extends Fragment {
                                 if(task.isSuccessful()) {
                                     Log.i(TAG, "auth: signinwithemail: success");
                                     FirebaseUser user = mAuth.getCurrentUser();
+                                    txt_password.setText("");
                                     updateUI(user);
                                     updateUserDb();
                                     CommonFunctions.updateSubscriptionsFromFirestore("users",txt_email.getText().toString());
@@ -215,37 +216,6 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        /*
-        // TODO: implement other methods to deprecate this one
-        btn_setEmail.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                updateUserDb();
-                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
-                updateUI(mAuth.getCurrentUser());
-            }
-        });
-        */
-
-        /*
-        btn_fetchToken.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                        if(task.isSuccessful()) {
-                            String token = Objects.requireNonNull(task.getResult()).getToken();
-                            Log.i(TAG, "firestore: successfully fetched new token: " + token);
-                            editor.putString("token", token).apply();
-                            txt_token.setText(token);
-                        }
-                    }
-                });
-            }
-        });
-        */
-
         return v;
     }
 
@@ -279,6 +249,7 @@ public class SettingsFragment extends Fragment {
             btn_userCreate.setVisibility(View.GONE);
             btn_userLogin.setVisibility(View.GONE);
             btn_userLogout.setVisibility(View.VISIBLE);
+            txt_password.setVisibility(View.GONE);
 
             if(firebaseUser.isEmailVerified()) {
                 btn_userVerify.setVisibility(View.GONE);
@@ -296,6 +267,7 @@ public class SettingsFragment extends Fragment {
             btn_userLogin.setVisibility(View.VISIBLE);
             btn_userLogout.setVisibility(View.GONE);
             btn_userVerify.setVisibility(View.GONE);
+            txt_password.setVisibility(View.VISIBLE);
 
             editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
             editor.putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();

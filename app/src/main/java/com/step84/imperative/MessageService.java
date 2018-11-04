@@ -17,6 +17,11 @@ import com.google.firebase.messaging.RemoteMessage;
 import com.google.firebase.storage.StorageReference;
 
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -50,6 +55,19 @@ public class MessageService extends FirebaseMessagingService implements MediaPla
         if(remoteMessage.getData().size() > 0) {
             Log.d(TAG, "firestore: Data payload: " + remoteMessage.getData());
             Map<String, String> data = remoteMessage.getData();
+            Log.d(TAG, "firestore: alarm timestamp from server = " + data.get("activated"));
+            String dateString = data.get("activated");
+            DateFormat format = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss", Locale.ENGLISH);
+
+            if(dateString != null) {
+                try {
+                    Date date = new Date();
+                    date = format.parse(dateString);
+                    Log.i(TAG, "firestore: alarm timestamp from Date.. = " + date.toString());
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
 
             // Preset message received
             AudioManager audioManager;
@@ -167,11 +185,11 @@ public class MessageService extends FirebaseMessagingService implements MediaPla
                 });
                 */
 
-                NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, "Imperative")
+                NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, getString(R.string.app_name))
                         .setSmallIcon(R.drawable.ic_launcher_background)
                         .setContentTitle("Alarm activated from " + source)
                         .setContentText("Run away, little girl!")
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                        .setPriority(NotificationCompat.PRIORITY_MAX);
                 NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
                 notificationManagerCompat.notify(1, mBuilder.build());
             }
