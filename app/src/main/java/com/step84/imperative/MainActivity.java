@@ -102,10 +102,12 @@ public class MainActivity
                     SettingsFragment settingsFragment = new SettingsFragment();
                     switchFragment(settingsFragment);
                     return true;
+                /*
                 case R.id.navigation_debug:
                     DebugFragment debugFragment = new DebugFragment();
                     switchFragment(debugFragment);
                     return true;
+                */
             }
             return false;
         }

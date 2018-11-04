@@ -5,26 +5,6 @@
     android:layout_height="match_parent"
     tools:context=".SettingsFragment">
 
-    <Button
-        android:id="@+id/btn_userLogout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/btn_setEmail"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="249dp"
-        android:layout_marginEnd="192dp"
-        android:text="@string/btn_userLogout" />
-
-    <Button
-        android:id="@+id/btn_userLogin"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/btn_setEmail"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="248dp"
-        android:layout_marginEnd="292dp"
-        android:text="@string/btn_userLogin" />
-
     <EditText
         android:id="@+id/txt_email"
         android:layout_width="wrap_content"
@@ -32,94 +12,64 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginStart="25dp"
-        android:layout_marginTop="46dp"
-        android:layout_marginEnd="44dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="100dp"
+        android:layout_marginEnd="20dp"
         android:ems="10"
         android:inputType="textEmailAddress" />
-
-    <TextView
-        android:id="@+id/txt_token"
-        android:layout_width="320dp"
-        android:layout_height="89dp"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginStart="29dp"
-        android:layout_marginTop="247dp"
-        android:layout_marginEnd="35dp"
-        android:background="#eeeeee" />
-
-    <TextView
-        android:id="@+id/txt_desc_email"
-        android:layout_width="152dp"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/txt_email"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="1dp"
-        android:layout_marginTop="20dp"
-        android:labelFor="@+id/txt_email"
-        android:text="@string/txt_desc_email" />
-
-    <TextView
-        android:id="@+id/txt_desc_token"
-        android:layout_width="152dp"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/txt_email"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="-4dp"
-        android:layout_marginTop="212dp"
-        android:text="@string/txt_desc_token" />
-
-    <Button
-        android:id="@+id/btn_setEmail"
-        android:layout_width="119dp"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/txt_email"
-        android:layout_alignParentStart="true"
-        android:layout_marginStart="31dp"
-        android:layout_marginTop="109dp"
-        android:text="@string/btn_setEmail" />
-
-    <Button
-        android:id="@+id/btn_fetchToken"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/txt_token"
-        android:layout_alignStart="@+id/txt_email"
-        android:layout_marginStart="2dp"
-        android:layout_marginTop="19dp"
-        android:text="@string/btn_fetchToken" />
-
-    <Button
-        android:id="@+id/btn_userCreate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/btn_userLogout"
-        android:layout_alignTop="@+id/btn_setEmail"
-        android:layout_marginTop="299dp"
-        android:text="@string/btn_userCreate" />
-
-    <Button
-        android:id="@+id/btn_userVerify"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/btn_userLogout"
-        android:layout_marginTop="3dp"
-        android:layout_marginEnd="10dp"
-        android:layout_toStartOf="@+id/btn_userLogout"
-        android:text="@string/btn_userVerify" />
 
     <EditText
         android:id="@+id/txt_password"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/txt_email"
-        android:layout_marginStart="-117dp"
-        android:layout_marginTop="4dp"
-        android:layout_toEndOf="@+id/btn_fetchToken"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_alignEnd="@+id/txt_email"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="20dp"
         android:ems="10"
         android:inputType="textPassword" />
+
+    <Button
+        android:id="@+id/btn_userLogout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txt_password"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_alignEnd="@+id/txt_email"
+        android:layout_marginTop="20dp"
+        android:text="@string/btn_userLogout" />
+
+    <Button
+        android:id="@+id/btn_userLogin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txt_password"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_alignEnd="@+id/txt_email"
+        android:layout_marginTop="20dp"
+        android:text="@string/btn_userLogin" />
+
+    <Button
+        android:id="@+id/btn_userCreate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btn_userLogin"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_alignEnd="@+id/txt_email"
+        android:layout_marginTop="10dp"
+        android:text="@string/btn_userCreate" />
+
+    <Button
+        android:id="@+id/btn_userVerify"
+        android:layout_width="344dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btn_userLogin"
+        android:layout_alignStart="@+id/txt_email"
+        android:layout_alignEnd="@+id/txt_email"
+        android:layout_marginTop="10dp"
+        android:text="@string/btn_userVerify" />
+
 
 
 </RelativeLayout>

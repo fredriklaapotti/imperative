@@ -14,11 +14,14 @@
     <string name="btn_toggleSubscription">Toggle subscription</string>
     <string name="btn_toggleSubscriptionSubscribe">Subscribe</string>
     <string name="btn_toggleSubscriptionUnsubscribe">Unsubscribe</string>
+
     <string name="spinner_subscribed">(subscribed)</string>
     <string name="spinner_unsubscribed">(unsubscribed)</string>
 
     <string name="txt_desc_email">E-mail</string>
     <string name="txt_desc_token">Token</string>
+
+    <string name="et_loggedout">Enter e-mail to login</string>
 
     <string name="error_requiredEmail">Required</string>
     <string name="error_requiredPassword">Required</string>

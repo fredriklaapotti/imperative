@@ -106,9 +106,9 @@ public class SettingsFragment extends Fragment {
 
         txt_email = v.findViewById(R.id.txt_email);
         txt_password = v.findViewById(R.id.txt_password);
-        TextView txt_token = v.findViewById(R.id.txt_token);
-        Button btn_setEmail = v.findViewById(R.id.btn_setEmail);
-        Button btn_fetchToken = v.findViewById(R.id.btn_fetchToken);
+        //TextView txt_token = v.findViewById(R.id.txt_token);
+        //Button btn_setEmail = v.findViewById(R.id.btn_setEmail);
+        //Button btn_fetchToken = v.findViewById(R.id.btn_fetchToken);
 
         btn_userCreate = v.findViewById(R.id.btn_userCreate);
         btn_userLogin = v.findViewById(R.id.btn_userLogin);
@@ -122,14 +122,7 @@ public class SettingsFragment extends Fragment {
         editor = sharedPreferences.edit();
         String token = sharedPreferences.getString("token","-1");
         Log.d(TAG,"Shared preferences token: " + token);
-        txt_token.setText(token);
-
-        String userEmail = sharedPreferences.getString(Constants.SP_EMAIL,"");
-        if(userEmail.equals("")) {
-            txt_email.setText("no email registered");
-        } else {
-            txt_email.setText(userEmail);
-        }
+        //txt_token.setText(token);
 
         btn_userCreate.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -179,6 +172,7 @@ public class SettingsFragment extends Fragment {
                                     CommonFunctions.updateSubscriptionsFromFirestore("users",txt_email.getText().toString());
                                 } else {
                                     Toast.makeText(getContext(), R.string.error_loginUserFailed, 5).show();
+                                    editor.putString(Constants.SP_EMAIL, txt_password.getText().toString()).apply();
                                     Log.d(TAG, "auth: signinwithemail: failed");
                                     updateUI(null);
                                 }
@@ -198,7 +192,10 @@ public class SettingsFragment extends Fragment {
                 mAuth.signOut();
                 sharedPreferences.edit().putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply(); // If user logs out, uses email in text. Add security.
                 updateUI(null);
-                updateUserDb();
+                //updateUserDb();
+                for(Zone zone : Constants.zoneArrayList) {
+                    zone.setSubscribed(false);
+                }
                 CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
             }
         });
@@ -218,6 +215,7 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        /*
         // TODO: implement other methods to deprecate this one
         btn_setEmail.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -227,7 +225,9 @@ public class SettingsFragment extends Fragment {
                 updateUI(mAuth.getCurrentUser());
             }
         });
+        */
 
+        /*
         btn_fetchToken.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -244,6 +244,7 @@ public class SettingsFragment extends Fragment {
                 });
             }
         });
+        */
 
         return v;
     }
@@ -300,6 +301,14 @@ public class SettingsFragment extends Fragment {
             editor.putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();
 
             Log.i(TAG, "auth: firebaseUser == null");
+        }
+
+        sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
+        String userEmail = sharedPreferences.getString(Constants.SP_EMAIL, "");
+        if(userEmail.equals("")) {
+            txt_email.setText(R.string.et_loggedout);
+        } else {
+            txt_email.setText(userEmail);
         }
     }
 

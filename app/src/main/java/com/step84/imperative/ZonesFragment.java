@@ -30,6 +30,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
@@ -58,6 +60,9 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
+
+    private FirebaseAuth mAuth;
+    private FirebaseUser currentUser;
 
     private final List<String> zones = new ArrayList<>();
 
@@ -96,6 +101,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             String mParam2 = getArguments().getString(ARG_PARAM2);
         }
         */
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
     }
 
     @Override
@@ -166,6 +173,10 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                 updateSubscriptionText();
             }
         });
+
+        if(CommonFunctions.userPermissions(currentUser).equals("guest")) {
+            btn_toggleSubscription.setVisibility(View.GONE);
+        }
 
         spinner_zones = v.findViewById(R.id.spinner_zones);
         spinner_zones.setOnItemSelectedListener(this);

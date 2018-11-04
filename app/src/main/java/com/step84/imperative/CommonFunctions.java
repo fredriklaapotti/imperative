@@ -4,6 +4,8 @@
 package com.step84.imperative;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
@@ -13,12 +15,18 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.api.Context;
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -47,6 +55,10 @@ public class CommonFunctions {
      */
     public static void updateSubscriptionsFromFirestore(String collection, String document) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+        if(!collection.equals("users") || document.equals("")) {
+            Log.d(TAG, "firestore geofence: FATAL: trying database call without values");
+            return;
+        }
 
         // TODO: make this loop short and tidy
         DocumentReference documentReference = db.collection(collection).document(document);
@@ -92,6 +104,12 @@ public class CommonFunctions {
     public static String userPermissions(FirebaseUser firebaseUser) {
         if(firebaseUser != null && firebaseUser.isEmailVerified()) {
             return "verified";
+        }
+        if(firebaseUser != null && !firebaseUser.isEmailVerified()) {
+            return "registered";
+        }
+        if(firebaseUser == null) {
+            return "guest";
         }
         return "unknown";
     }
