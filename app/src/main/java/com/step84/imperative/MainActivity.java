@@ -192,12 +192,12 @@ public class MainActivity
         BroadcastReceiver messageReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                String intentMessage = intent.getStringExtra("zone");
+                String intentMessage = intent.getStringExtra(Constants.BROADCAST_GEOFENCEPUDATE_ZONE);
                 Log.i(TAG, "geofence: got onReceive() in MainActivity, intentMessage = " + intentMessage);
                 Toast.makeText(context, intentMessage, Toast.LENGTH_LONG).show();
             }
         };
-        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, new IntentFilter("geofence-update"));
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, new IntentFilter(Constants.BROADCAST_GEOFENCEUPDATE));
         // END EXPERIMENT
 
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
@@ -371,7 +371,7 @@ public class MainActivity
                                 .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                                 .build());
-                        Constants.zoneArrayList.add(new Zone(name, new LatLng(lat, lng), radius, false));
+                        Constants.zoneArrayList.add(new Zone("Y", name, new LatLng(lat, lng), radius, false));
                     }
                     addGeofences();
                 } else {

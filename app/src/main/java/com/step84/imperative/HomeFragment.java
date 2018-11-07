@@ -30,6 +30,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
@@ -55,8 +56,9 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
 
-    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
-    private final FirebaseStorage storage = FirebaseStorage.getInstance();
+    private FirebaseFirestore db;
+    private FirebaseStorage storage;
+    private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
 
     private final static String TAG = HomeFragment.class.getSimpleName();
@@ -66,6 +68,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private Uri downloadUri;
 
     private Button btn_larmRecord;
+    private TextView txt_loggedInAs;
 
     private SharedPreferences sharedPreferences;
     private StorageReference storageReference;
@@ -109,10 +112,16 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
             String mParam2 = getArguments().getString(ARG_PARAM2);
         }
         */
+
+        db = FirebaseFirestore.getInstance();
+        storage = FirebaseStorage.getInstance();
+        mAuth = FirebaseAuth.getInstance();
+        Log.i(TAG, "owl-ui: onCreate()");
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
+        CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
     }
 
     /**
@@ -128,10 +137,12 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_home, container, false);
 
+        Log.i(TAG, "owl-ui: onCreateView()");
         TextView txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
         Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
         Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
         btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
+        txt_loggedInAs = v.findViewById(R.id.txt_loggedInAs);
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         //Toast.makeText(getContext(), "In onResume", 10);
 
@@ -357,10 +368,49 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
      * @param user A Firebase user object.
      */
     private void updateUI(FirebaseUser user) {
+        Log.i(TAG, "owl-user: userPermissions(user) = " + CommonFunctions.userPermissions(user));
         if(CommonFunctions.userPermissions(user).equals("verified")) {
             btn_larmRecord.setVisibility(View.VISIBLE);
-        } else {
+            txt_loggedInAs.setText("User: verified as " + currentUser.getEmail());
+        } else if(CommonFunctions.userPermissions(user).equals("anonymous")) {
             btn_larmRecord.setVisibility(View.GONE);
+            txt_loggedInAs.setText("User: anonymous");
+        } else {
+            mAuth.signInAnonymously().addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        Log.i(TAG, "owl-user: successful anonymous login");
+                        currentUser = mAuth.getCurrentUser();
+                        updateUI(currentUser);
+
+                        Map<String, Object> newUser = new HashMap<>();
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_CREATED, Timestamp.now());
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now());
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, "anonymous");
+                        db.collection(Constants.DATABASE_COLLECTION_USERS).document(currentUser.getUid())
+                                .set(newUser)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        Log.i(TAG, "owl-user: successfully added anonymous user with id = " + currentUser.getUid());
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.d(TAG, "owl-user: failed to add anonymous user with id = " + currentUser.getUid());
+                                    }
+                                });
+
+
+                        Log.i(TAG, "owl-user: isAnonymous() = " + currentUser.isAnonymous());
+                    } else {
+                        Log.d(TAG, "owl-user: failed anonymous login");
+                        updateUI(null);
+                    }
+                }
+            });
         }
     }
 

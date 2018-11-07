@@ -21,16 +21,28 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
+import org.w3c.dom.Document;
+
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,6 +74,8 @@ public class SettingsFragment extends Fragment {
     private Button btn_userLogin;
     private Button btn_userLogout;
     private Button btn_userVerify;
+
+    private String documentId;
 
     private OnFragmentInteractionListener mListener;
 
@@ -137,9 +151,40 @@ public class SettingsFragment extends Fragment {
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 if(task.isSuccessful()) {
                                     Log.i(TAG, "auth: createuserwithemail: success");
+                                    AuthCredential credential = EmailAuthProvider.getCredential(txt_email.getText().toString(), txt_password.getText().toString());
                                     FirebaseUser user = mAuth.getCurrentUser();
+                                    mAuth.getCurrentUser().linkWithCredential(credential)
+                                            .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<AuthResult> task) {
+                                                    if(task.isSuccessful()) {
+                                                        Log.i(TAG, "owl-user: linked anonymous account with " + txt_email.getText().toString());
+                                                    } else {
+                                                        Log.d(TAG, "owl-user: failed to link anonymous account with " + txt_email.getText().toString());
+                                                    }
+                                                }
+                                            });
                                     updateUI(user);
-                                    updateUserDb();
+
+                                    Map<String, Object> newUser = new HashMap<>();
+                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_CREATED, Timestamp.now());
+                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now());
+                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, txt_email.getText().toString());
+                                    db.collection(Constants.DATABASE_COLLECTION_USERS)
+                                            .add(newUser)
+                                            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                @Override
+                                                public void onSuccess(DocumentReference documentReference) {
+                                                    Log.i(TAG, "owl-user: added new user to Firestore");
+                                                }
+                                            })
+                                            .addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    Log.i(TAG, "owl-user: failed to add user to Firestore");
+                                                }
+                                            });
+
                                     CommonFunctions.updateSubscriptionsFromFirestore("users", txt_email.getText().toString());
                                 } if(task.getException() instanceof FirebaseAuthUserCollisionException) {
                                     Log.d(TAG, "auth: createuserwithemail: user already exists");
@@ -167,9 +212,34 @@ public class SettingsFragment extends Fragment {
                                 if(task.isSuccessful()) {
                                     Log.i(TAG, "auth: signinwithemail: success");
                                     FirebaseUser user = mAuth.getCurrentUser();
+                                    AuthCredential credential = EmailAuthProvider.getCredential(txt_email.getText().toString(), txt_password.getText().toString());
+                                    mAuth.getCurrentUser().linkWithCredential(credential)
+                                            .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<AuthResult> task) {
+                                                    if(task.isSuccessful()) {
+                                                        Log.i(TAG, "owl-user: linked anonymous account with " + txt_email.getText().toString());
+                                                    } else {
+                                                        Log.d(TAG, "owl-user: failed to link anonymous account with " + txt_email.getText().toString());
+                                                    }
+                                                }
+                                            });
                                     txt_password.setText("");
                                     updateUI(user);
-                                    updateUserDb();
+                                    updateUserDb("login");
+                                    /*
+                                    CollectionReference usersRef = db.collection(Constants.DATABASE_COLLECTION_USERS);
+                                    Query userDocument = usersRef.whereEqualTo(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, txt_email.getText().toString());
+                                    userDocument.get().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                                        @Override
+                                        public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                                            List<DocumentSnapshot> snapshotsList = queryDocumentSnapshots.getDocuments();
+                                            for(DocumentSnapshot snapshot : snapshotsList) {
+                                                Log.i(TAG, "owl-user: testar lista");
+                                            }
+                                        }
+                                    });
+                                    */
                                     CommonFunctions.updateSubscriptionsFromFirestore("users",txt_email.getText().toString());
                                 } else {
                                     Toast.makeText(getContext(), R.string.error_loginUserFailed, 5).show();
@@ -185,6 +255,45 @@ public class SettingsFragment extends Fragment {
                         });
             }
         });
+
+
+        Log.i(TAG, "owl-user: current user info: " + currentUser.getUid());
+
+        //String documentId;
+        db.collection(Constants.DATABASE_COLLECTION_USERS).whereEqualTo("email", "testar").get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                documentId = document.getId();
+
+                                db.collection(Constants.DATABASE_COLLECTION_USERS).document(documentId)
+                                        .update(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now())
+                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                Log.i(TAG, "owl-user: Firestore: updated document id = " + documentId);
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Log.i(TAG, "owl-user: Firestore failed to update document with id = " + documentId);
+                                            }
+                                        });
+                            }
+                        }
+                    }
+                });
+
+
+
+
+
+
+
+
 
         btn_userLogout.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -216,10 +325,12 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        updateUserDb("create");
+
         return v;
     }
 
-    private void updateUserDb() {
+    private void updateUserDb(String action) {
         for(Zone zone : Constants.zoneArrayList) {
             zone.setSubscribed(false);
         }
@@ -228,6 +339,28 @@ public class SettingsFragment extends Fragment {
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("email", txt_email.getText().toString());
         userInfo.put("lastUpdated", Timestamp.now());
+
+        // EXPERIMENT 181106
+        /*
+        if(action.equals("create")) {
+            Query userDocument = db.collection(Constants.DATABASE_COLLECTION_USERS).whereEqualTo(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, txt_email.getText().toString());
+            Log.i(TAG, "owl-user: userDocument = " + userDocument);
+            userDocument.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                    if(task.isSuccessful()) {
+                        for(QueryDocumentSnapshot documentSnapshot : task.getResult()) {
+                            Log.i(TAG, "owl-user: documentSnapshot.getData() = " + documentSnapshot.getData().get("email"));
+                        }
+                    } else {
+                        Log.i(TAG, "owl-user: documentSnapshot.getData() failed");
+                    }
+                }
+            });
+        }
+        */
+        // END EXPERIMENT
+
 
         db.collection("users").document(txt_email.getText().toString())
                 .set(userInfo, SetOptions.merge())
@@ -245,7 +378,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void updateUI(FirebaseUser firebaseUser) {
-        if(firebaseUser != null) {
+        if(CommonFunctions.userPermissions(firebaseUser).equals("verified") || CommonFunctions.userPermissions(firebaseUser).equals("registered")) {
             btn_userCreate.setVisibility(View.GONE);
             btn_userLogin.setVisibility(View.GONE);
             btn_userLogout.setVisibility(View.VISIBLE);
@@ -262,6 +395,12 @@ public class SettingsFragment extends Fragment {
 
             Log.i(TAG, "auth: firebaseUser != null");
             Log.i(TAG, "auth: firebaseuser: " + firebaseUser.getEmail() + " " + firebaseUser.getMetadata());
+        } else if(CommonFunctions.userPermissions(firebaseUser).equals("anonymous")) {
+            btn_userCreate.setVisibility(View.VISIBLE);
+            btn_userLogin.setVisibility(View.VISIBLE);
+            btn_userLogout.setVisibility(View.GONE);
+            btn_userVerify.setVisibility(View.GONE);
+            txt_password.setVisibility(View.VISIBLE);
         } else {
             btn_userCreate.setVisibility(View.VISIBLE);
             btn_userLogin.setVisibility(View.VISIBLE);

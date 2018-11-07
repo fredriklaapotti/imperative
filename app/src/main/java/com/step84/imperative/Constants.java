@@ -28,6 +28,25 @@ final class Constants {
     public static final String SP_SELECTEDZONE = "selectedZone";
     public static final String SP_SPINNERSELECTED = "userChoiceSpinner";
     public static boolean REQUESTINGLOCATIONUPDATES = false;
+    public static String BROADCAST_GEOFENCEUPDATE = "broadcast-geofence";
+    public static String BROADCAST_GEOFENCEPUDATE_ZONE = "zone";
+
+    public static String DATABASE_COLLECTION_USERS = "users";
+    public static String DATABASE_COLLECTION_USERS_CREATED = "created";
+    public static String DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED = "lastUpdated";
+    public static String DATABASE_COLLECTION_USERS_FIELD_EMAIL = "email";
+
+    public static String DATABASE_COLLECTION_SUBSCRIPTIONS = "subscriptions";
+    public static String DATABASE_COLLECTION_SUBSCRIPTIONS_USER = "user";
+    public static String DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE = "zone";
+
+    public static String DATABASE_COLLECTION_ZONES = "zones";
+    public static String DATABASE_COLLECTION_ZONES_ADDED = "added";
+    public static String DATABASE_COLLECTION_ZONES_LATLNG = "latlng";
+    public static String DATABASE_COLLECTION_ZONES_NAME = "name";
+    public static String DATABASE_COLLECTION_ZONES_RADIUS = "radius";
+
+
 
     static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
@@ -38,6 +57,6 @@ final class Constants {
 
     // TODO: this is necessary at the moment to populate geofences at startup - but it's ugly.
     static {
-        zoneArrayList.add(new Zone("placeholder", new LatLng(59.374349, 13.513987), 100, true));
+        zoneArrayList.add(new Zone("X", "placeholder", new LatLng(59.374349, 13.513987), 100, true));
     }
 }

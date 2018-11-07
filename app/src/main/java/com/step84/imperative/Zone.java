@@ -7,16 +7,22 @@ import com.google.android.gms.maps.model.LatLng;
  * Implemented as an ArrayList<Zone> zoneArrayList in Constants.zoneArrayList
  */
 public class Zone {
+    private final String id;
     private final String name;
     private final LatLng latlng;
     private final double radius;
     private boolean subscribed;
 
-    public Zone(String name, LatLng latlng, double radius, boolean subscribed) {
+    public Zone(String id, String name, LatLng latlng, double radius, boolean subscribed) {
+        this.id = id;
         this.name = name;
         this.latlng = latlng;
         this.radius = radius;
         this.subscribed = subscribed;
+    }
+
+    public String getId() {
+        return this.id;
     }
 
     public String getName() {

@@ -14,6 +14,7 @@ import android.util.Log;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -24,9 +25,12 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -96,6 +100,60 @@ public class CommonFunctions {
     }
 
     /**
+     * Update subscriptions based on the separate subscriptions collection
+     *
+     * @param firebaseUser A FirebaseUser object, safer than passing strings around.
+     */
+    public static void updateSubscriptionsFromFirestore2(FirebaseUser firebaseUser) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, firebaseUser.getUid()).get()
+                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                    @Override
+                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                        List<DocumentSnapshot> snapshotList = queryDocumentSnapshots.getDocuments();
+                        for(DocumentSnapshot snapshot : snapshotList) {
+                            Log.i(TAG, "owl-user: found subscription for user = " + firebaseUser.getUid() + " for zone = " + snapshot.get("zone"));
+                            for(Zone zone: Constants.zoneArrayList) {
+                                if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
+                                    zone.setSubscribed(true);
+                                    Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
+                                }
+
+                            }
+                        }
+                    }
+                });
+    }
+
+    public static void updateAllZonesFromFirestore() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        //Constants.zoneArrayList.clear();
+        db.collection(Constants.DATABASE_COLLECTION_ZONES).get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                Log.i(TAG, "owl-zones: fetched document " + document.get("name") + " with id = " + document.getId());
+                                String id = Objects.requireNonNull(document.getId());
+                                String name = Objects.requireNonNull(document.get("name")).toString();
+                                double lat = Objects.requireNonNull(document.getGeoPoint("latlng")).getLatitude();
+                                double lng = Objects.requireNonNull(document.getGeoPoint("latlng")).getLongitude();
+                                double radius = Objects.requireNonNull(document.getDouble("radius"));
+                                boolean subscribed = true;
+
+                                Constants.zoneArrayList.add(new Zone(id, name, new LatLng(lat, lng), radius, subscribed));
+                                Log.i(TAG, "owl-zones: added zone to Constants.zoneArrayList");
+                            }
+                        } else {
+                            Log.d(TAG, "owl-zones: failed to fetch zone documents");
+                        }
+                    }
+                });
+    }
+
+    /**
      * Check user permissions regardless of app context.
      *
      * @param firebaseUser Needs to be sent from context (fragment).
@@ -105,8 +163,11 @@ public class CommonFunctions {
         if(firebaseUser != null && firebaseUser.isEmailVerified()) {
             return "verified";
         }
-        if(firebaseUser != null && !firebaseUser.isEmailVerified()) {
+        if(firebaseUser != null && !firebaseUser.isEmailVerified() && !firebaseUser.isAnonymous()) {
             return "registered";
+        }
+        if(firebaseUser!= null && firebaseUser.isAnonymous()) {
+            return "anonymous";
         }
         if(firebaseUser == null) {
             return "guest";

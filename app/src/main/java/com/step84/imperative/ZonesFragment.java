@@ -28,12 +28,15 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -103,6 +106,13 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         */
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        CommonFunctions.updateAllZonesFromFirestore();
+        CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
+        for(Zone zone : Constants.zoneArrayList) {
+            if(!zone.getName().equals("placeholder")) {
+                zones.add(zone.getName());
+            }
+        }
     }
 
     @Override
@@ -181,11 +191,6 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         spinner_zones = v.findViewById(R.id.spinner_zones);
         spinner_zones.setOnItemSelectedListener(this);
 
-        for(Zone zone : Constants.zoneArrayList) {
-            if(!zone.getName().equals("placeholder")) {
-                zones.add(zone.getName());
-            }
-        }
 
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);

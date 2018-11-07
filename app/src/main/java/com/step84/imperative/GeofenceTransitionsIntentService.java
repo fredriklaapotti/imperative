@@ -74,7 +74,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
             for(Geofence geofence : triggeringGeofences) {
                 Log.i(TAG, "geofence: ENTER: " + geofence.toString());
                 Log.i(TAG, "geofence: ENTER: sending broadcast message");
-                broadcastIntent.putExtra("zone", geofenceTransitionDetails);
+                broadcastIntent.putExtra(Constants.BROADCAST_GEOFENCEPUDATE_ZONE, geofenceTransitionDetails);
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
 
                 NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, getString(R.string.app_name))
@@ -94,7 +94,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
             for(Geofence geofence : triggeringGeofences) {
                 Log.i(TAG, "geofence: EXIT: " + geofence.toString());
                 Log.i(TAG, "geofence: EXIT: sending broadcast message");
-                broadcastIntent.putExtra("zone", geofenceTransitionDetails);
+                broadcastIntent.putExtra(Constants.BROADCAST_GEOFENCEPUDATE_ZONE, geofenceTransitionDetails);
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
 
                 NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, getString(R.string.app_name))

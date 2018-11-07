@@ -45,4 +45,14 @@
         android:layout_marginBottom="156dp"
         android:text="Record and larm" />
 
+    <TextView
+        android:id="@+id/txt_loggedInAs"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="71dp"
+        android:layout_marginTop="32dp"
+        android:text="Placeholder text" />
+
 </RelativeLayout>
