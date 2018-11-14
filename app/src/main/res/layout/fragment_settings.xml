@@ -34,40 +34,48 @@
         android:id="@+id/btn_userLogout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/txt_password"
+        android:layout_below="@+id/btn_userLogin"
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignEnd="@+id/txt_email"
-        android:layout_marginTop="20dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="11dp"
+        android:layout_marginEnd="0dp"
         android:text="@string/btn_userLogout" />
 
     <Button
         android:id="@+id/btn_userLogin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/txt_password"
+        android:layout_below="@+id/btn_userVerify"
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignEnd="@+id/txt_email"
-        android:layout_marginTop="20dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="9dp"
+        android:layout_marginEnd="0dp"
         android:text="@string/btn_userLogin" />
 
     <Button
         android:id="@+id/btn_userCreate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/btn_userLogin"
+        android:layout_below="@+id/txt_password"
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignEnd="@+id/txt_email"
-        android:layout_marginTop="10dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="0dp"
         android:text="@string/btn_userCreate" />
 
     <Button
         android:id="@+id/btn_userVerify"
         android:layout_width="344dp"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/btn_userLogin"
+        android:layout_below="@+id/btn_userCreate"
         android:layout_alignStart="@+id/txt_email"
         android:layout_alignEnd="@+id/txt_email"
-        android:layout_marginTop="10dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="11dp"
+        android:layout_marginEnd="0dp"
         android:text="@string/btn_userVerify" />
 
 

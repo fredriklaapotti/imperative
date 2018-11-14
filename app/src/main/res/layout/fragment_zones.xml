@@ -19,27 +19,6 @@
         android:layout_marginEnd="0dp"
          />
 
-    <Button
-        android:id="@+id/btn_disableAlarm"
-        android:layout_width="150dp"
-        android:layout_height="50dp"
-        android:layout_alignTop="@+id/btn_enableAlarm"
-        android:layout_marginStart="-1dp"
-        android:layout_toEndOf="@+id/btn_enableAlarm"
-        android:text="Disable alarm"
-        android:visibility="invisible" />
-
-    <Button
-        android:id="@+id/btn_enableAlarm"
-        android:layout_width="150dp"
-        android:layout_height="50dp"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="46dp"
-        android:layout_marginTop="423dp"
-        android:text="Enable alarm"
-        android:visibility="invisible" />
-
     <Spinner
         android:id="@+id/spinner_zones"
         android:layout_width="match_parent"
@@ -57,6 +36,27 @@
         android:layout_alignParentEnd="true"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:text="@string/btn_toggleSubscription" />
+        android:text="@string/btn_toggleSubscription"
+        android:visibility="invisible" />
+
+    <Button
+        android:id="@+id/btn_subscribe"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/spinner_zones"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="81dp"
+        android:layout_marginTop="92dp"
+        android:text="Subscribe" />
+
+    <Button
+        android:id="@+id/btn_unsubscribe"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/spinner_zones"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="206dp"
+        android:layout_marginTop="92dp"
+        android:text="Unsubscribe" />
 
 </RelativeLayout>

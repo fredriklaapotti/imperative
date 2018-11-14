@@ -3,6 +3,8 @@
  */
 package com.step84.imperative;
 
+import android.location.Location;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONObject;
@@ -37,6 +39,7 @@ final class Constants {
     public static String DATABASE_COLLECTION_USERS_FIELD_EMAIL = "email";
 
     public static String DATABASE_COLLECTION_SUBSCRIPTIONS = "subscriptions";
+    public static String DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE = "active";
     public static String DATABASE_COLLECTION_SUBSCRIPTIONS_USER = "user";
     public static String DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE = "zone";
 
@@ -54,6 +57,8 @@ final class Constants {
 
     static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS = GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
     static final ArrayList<Zone> zoneArrayList = new ArrayList<>();
+
+    public static Location currentLocation;
 
     // TODO: this is necessary at the moment to populate geofences at startup - but it's ugly.
     static {

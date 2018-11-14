@@ -130,7 +130,7 @@ public class SettingsFragment extends Fragment {
         btn_userVerify = v.findViewById(R.id.btn_userVerify);
 
         currentUser = mAuth.getCurrentUser();
-        updateUI(currentUser);
+        //updateUI(currentUser);
 
         sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
         editor = sharedPreferences.edit();
@@ -165,28 +165,8 @@ public class SettingsFragment extends Fragment {
                                                 }
                                             });
                                     updateUI(user);
-
-                                    Map<String, Object> newUser = new HashMap<>();
-                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_CREATED, Timestamp.now());
-                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now());
-                                    newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, txt_email.getText().toString());
-                                    db.collection(Constants.DATABASE_COLLECTION_USERS)
-                                            .add(newUser)
-                                            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                                                @Override
-                                                public void onSuccess(DocumentReference documentReference) {
-                                                    Log.i(TAG, "owl-user: added new user to Firestore");
-                                                }
-                                            })
-                                            .addOnFailureListener(new OnFailureListener() {
-                                                @Override
-                                                public void onFailure(@NonNull Exception e) {
-                                                    Log.i(TAG, "owl-user: failed to add user to Firestore");
-                                                }
-                                            });
-
-                                    CommonFunctions.updateSubscriptionsFromFirestore("users", txt_email.getText().toString());
                                 } if(task.getException() instanceof FirebaseAuthUserCollisionException) {
+                                    Toast.makeText(getContext(), R.string.error_createUserFailed, 5).show();
                                     Log.d(TAG, "auth: createuserwithemail: user already exists");
                                 } else {
                                     Toast.makeText(getContext(), R.string.error_createUserFailed, 5).show();
@@ -226,74 +206,16 @@ public class SettingsFragment extends Fragment {
                                             });
                                     txt_password.setText("");
                                     updateUI(user);
-                                    updateUserDb("login");
-                                    /*
-                                    CollectionReference usersRef = db.collection(Constants.DATABASE_COLLECTION_USERS);
-                                    Query userDocument = usersRef.whereEqualTo(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, txt_email.getText().toString());
-                                    userDocument.get().addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-                                        @Override
-                                        public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                                            List<DocumentSnapshot> snapshotsList = queryDocumentSnapshots.getDocuments();
-                                            for(DocumentSnapshot snapshot : snapshotsList) {
-                                                Log.i(TAG, "owl-user: testar lista");
-                                            }
-                                        }
-                                    });
-                                    */
-                                    CommonFunctions.updateSubscriptionsFromFirestore("users",txt_email.getText().toString());
                                 } else {
                                     Toast.makeText(getContext(), R.string.error_loginUserFailed, 5).show();
                                     editor.putString(Constants.SP_EMAIL, txt_password.getText().toString()).apply();
                                     Log.d(TAG, "auth: signinwithemail: failed");
                                     updateUI(null);
                                 }
-
-                                if(!task.isSuccessful()) {
-                                    Log.d(TAG, "auth: signinwithemail: failed due to task not successful");
-                                }
                             }
                         });
             }
         });
-
-
-        Log.i(TAG, "owl-user: current user info: " + currentUser.getUid());
-
-        //String documentId;
-        db.collection(Constants.DATABASE_COLLECTION_USERS).whereEqualTo("email", "testar").get()
-                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                        if(task.isSuccessful()) {
-                            for(QueryDocumentSnapshot document : task.getResult()) {
-                                documentId = document.getId();
-
-                                db.collection(Constants.DATABASE_COLLECTION_USERS).document(documentId)
-                                        .update(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now())
-                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                            @Override
-                                            public void onSuccess(Void aVoid) {
-                                                Log.i(TAG, "owl-user: Firestore: updated document id = " + documentId);
-                                            }
-                                        })
-                                        .addOnFailureListener(new OnFailureListener() {
-                                            @Override
-                                            public void onFailure(@NonNull Exception e) {
-                                                Log.i(TAG, "owl-user: Firestore failed to update document with id = " + documentId);
-                                            }
-                                        });
-                            }
-                        }
-                    }
-                });
-
-
-
-
-
-
-
-
 
         btn_userLogout.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -302,11 +224,9 @@ public class SettingsFragment extends Fragment {
                 mAuth.signOut();
                 sharedPreferences.edit().putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply(); // If user logs out, uses email in text. Add security.
                 updateUI(null);
-                //updateUserDb();
                 for(Zone zone : Constants.zoneArrayList) {
                     zone.setSubscribed(false);
                 }
-                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
             }
         });
 
@@ -325,7 +245,8 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        updateUserDb("create");
+        //updateUserDb("create");
+        updateUI(currentUser);
 
         return v;
     }
@@ -362,6 +283,7 @@ public class SettingsFragment extends Fragment {
         // END EXPERIMENT
 
 
+
         db.collection("users").document(txt_email.getText().toString())
                 .set(userInfo, SetOptions.merge())
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
@@ -375,6 +297,7 @@ public class SettingsFragment extends Fragment {
                 Log.d(TAG, "Error adding document");
             }
         });
+
     }
 
     private void updateUI(FirebaseUser firebaseUser) {

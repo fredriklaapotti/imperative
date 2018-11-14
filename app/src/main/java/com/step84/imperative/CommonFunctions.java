@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.widget.ArrayAdapter;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -100,13 +101,110 @@ public class CommonFunctions {
     }
 
     /**
+     * Update all zones and whether firebaseUser is subscribed to them
+     *
+     * @param firebaseUser FirebaseUser-object
+     */
+    public static void updateFromFirestore(FirebaseUser firebaseUser) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Updates all zones from the database and puts them in zoneArrayList
+        db.collection(Constants.DATABASE_COLLECTION_ZONES)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            Constants.zoneArrayList.clear();
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                String id = Objects.requireNonNull(document.getId());
+                                String name = Objects.requireNonNull(document.get("name")).toString();
+                                double lat = Objects.requireNonNull(document.getGeoPoint("latlng")).getLatitude();
+                                double lng = Objects.requireNonNull(document.getGeoPoint("latlng")).getLongitude();
+                                double radius = Objects.requireNonNull(document.getDouble("radius"));
+                                boolean subscribed = false;
+
+                                Constants.zoneArrayList.add(new Zone(id, name, new LatLng(lat, lng), radius, subscribed));
+                                Log.i(TAG, "owl-zones: fetched document " + document.get("name") + " with id = " + document.getId() + " and added to Constants.zoneArrayList");
+                            }
+
+                            // zoneArrayList updated, check if user is logged in and update subscriptions
+                            if(firebaseUser != null) {
+                                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, firebaseUser.getUid())
+                                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                                        .get()
+                                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                if(task.isSuccessful()) {
+                                                    List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                                    Log.i(TAG, "owl: in task.isSuccessful, should only be called once");
+                                                    for(DocumentSnapshot snapshot : snapshotList) {
+                                                        Log.i(TAG, "owl-user: found subscription for user = " + firebaseUser.getUid() + " for zone = " + snapshot.get("zone"));
+                                                        for(Zone zone: Constants.zoneArrayList) {
+                                                            if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
+                                                                zone.setSubscribed(true);
+                                                                Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
+                                                            }
+
+                                                        }
+                                                    }
+                                                } else {
+                                                    Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                                }
+                                            }
+                                        });
+                                        /*
+                                        .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                                            @Override
+                                            public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                                                List<DocumentSnapshot> snapshotList = queryDocumentSnapshots.getDocuments();
+                                                for(DocumentSnapshot snapshot : snapshotList) {
+                                                    Log.i(TAG, "owl-user: found subscription for user = " + firebaseUser.getUid() + " for zone = " + snapshot.get("zone"));
+                                                    for(Zone zone: Constants.zoneArrayList) {
+                                                        if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
+                                                            zone.setSubscribed(true);
+                                                            Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Log.d(TAG, "owl: failed to fetch subscription documents");
+                                            }
+                                        });
+                                        */
+                            }
+                        } else {
+                            Log.d(TAG, "owl: firebase user doesn't exist");
+                        }
+                    }
+                });
+    }
+
+    /**
      * Update subscriptions based on the separate subscriptions collection
      *
      * @param firebaseUser A FirebaseUser object, safer than passing strings around.
      */
     public static void updateSubscriptionsFromFirestore2(FirebaseUser firebaseUser) {
+        Log.i(TAG, "owl: in updateSubscriptionsFromFirestore2()");
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, firebaseUser.getUid()).get()
+
+        if(firebaseUser == null) {
+            Log.d(TAG, "owl: firebase user null in CommonFunctions.updateSubscriptionsFromFirestore2()");
+            return;
+        }
+
+        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, firebaseUser.getUid())
+                //.whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                .get()
                 .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
                     @Override
                     public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
@@ -122,6 +220,12 @@ public class CommonFunctions {
                             }
                         }
                     }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.d(TAG, "owl: failed to fetch subscription documents");
+                    }
                 });
     }
 
@@ -129,28 +233,41 @@ public class CommonFunctions {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         //Constants.zoneArrayList.clear();
-        db.collection(Constants.DATABASE_COLLECTION_ZONES).get()
+        db.collection(Constants.DATABASE_COLLECTION_ZONES)
+                .get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<QuerySnapshot> task) {
                         if(task.isSuccessful()) {
+                            Constants.zoneArrayList.clear();
                             for(QueryDocumentSnapshot document : task.getResult()) {
-                                Log.i(TAG, "owl-zones: fetched document " + document.get("name") + " with id = " + document.getId());
                                 String id = Objects.requireNonNull(document.getId());
                                 String name = Objects.requireNonNull(document.get("name")).toString();
                                 double lat = Objects.requireNonNull(document.getGeoPoint("latlng")).getLatitude();
                                 double lng = Objects.requireNonNull(document.getGeoPoint("latlng")).getLongitude();
                                 double radius = Objects.requireNonNull(document.getDouble("radius"));
-                                boolean subscribed = true;
+                                boolean subscribed = false;
 
                                 Constants.zoneArrayList.add(new Zone(id, name, new LatLng(lat, lng), radius, subscribed));
-                                Log.i(TAG, "owl-zones: added zone to Constants.zoneArrayList");
+                                Log.i(TAG, "owl-zones: fetched document " + document.get("name") + " with id = " + document.getId() + " and added to Constants.zoneArrayList");
                             }
                         } else {
                             Log.d(TAG, "owl-zones: failed to fetch zone documents");
                         }
                     }
                 });
+    }
+
+    public static Zone getZoneByName(String name) {
+        Zone foundZone = null;
+
+        for(Zone zone : Constants.zoneArrayList) {
+            if(zone.getName().equals(name)) {
+                foundZone = zone;
+            }
+        }
+
+        return foundZone;
     }
 
     /**
@@ -160,18 +277,106 @@ public class CommonFunctions {
      * @return For now a list of strings based on authentication.
      */
     public static String userPermissions(FirebaseUser firebaseUser) {
+        Log.i(TAG, "owl: in userPermissions()");
+
         if(firebaseUser != null && firebaseUser.isEmailVerified()) {
+            Log.i(TAG, "owl: user = verified");
             return "verified";
         }
         if(firebaseUser != null && !firebaseUser.isEmailVerified() && !firebaseUser.isAnonymous()) {
+            Log.i(TAG, "owl: user = registered" + firebaseUser.getEmail());
             return "registered";
         }
-        if(firebaseUser!= null && firebaseUser.isAnonymous()) {
+        if(firebaseUser != null && firebaseUser.isAnonymous()) {
+            Log.i(TAG, "owl: user = anonymous");
             return "anonymous";
         }
         if(firebaseUser == null) {
+            Log.i(TAG, "owl: user = guest");
             return "guest";
         }
         return "unknown";
     }
 }
+
+                                    /*
+                                    db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                            .whereEqualTo("user", currentUser.getUid())
+                                            .whereEqualTo("zone", activeZone.getId())
+                                            .get()
+                                            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                    if(task.isSuccessful()) {
+                                                        Log.i(TAG, "owl: set zone. Id = " + activeZone.getId() + ", name = " + activeZone.getName());
+                                                    } else {
+                                                        Log.d(TAG, "Failed to fetch documents");
+                                                    }
+                                                }
+                                            });
+                                    */
+
+
+// Disable automatic anonymous login, make it manual
+        /* else {
+            mAuth.signInAnonymously().addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        Log.i(TAG, "owl-user: successful anonymous login");
+                        currentUser = mAuth.getCurrentUser();
+                        updateUI(currentUser);
+
+                        Map<String, Object> newUser = new HashMap<>();
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_CREATED, Timestamp.now());
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now());
+                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, "anonymous");
+                        db.collection(Constants.DATABASE_COLLECTION_USERS).document(currentUser.getUid())
+                                .set(newUser)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        Log.i(TAG, "owl-user: successfully added anonymous user with id = " + currentUser.getUid());
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.d(TAG, "owl-user: failed to add anonymous user with id = " + currentUser.getUid());
+                                    }
+                                });
+
+
+                        Log.i(TAG, "owl-user: isAnonymous() = " + currentUser.isAnonymous());
+                    } */
+
+                /*
+        //Log.i(TAG, "owl-user: current user info: " + currentUser.getUid());
+        //String documentId;
+        db.collection(Constants.DATABASE_COLLECTION_USERS).whereEqualTo("email", "testar").get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                documentId = document.getId();
+
+                                db.collection(Constants.DATABASE_COLLECTION_USERS).document(documentId)
+                                        .update(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now())
+                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                Log.i(TAG, "owl-user: Firestore: updated document id = " + documentId);
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Log.i(TAG, "owl-user: Firestore failed to update document with id = " + documentId);
+                                            }
+                                        });
+                            }
+                        }
+                    }
+                });
+        */

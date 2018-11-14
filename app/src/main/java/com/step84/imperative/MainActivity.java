@@ -172,6 +172,7 @@ public class MainActivity
                     sharedPreferences = getPreferences(Context.MODE_PRIVATE);
                     isMapReady = sharedPreferences.getString("isMapReady", "false");
                     currentLocation = location;
+                    Constants.currentLocation = location;
                     if(isMapReady.equals("true")) {
                         ZonesFragment.updateMap(location);
                     } else {

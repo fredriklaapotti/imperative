@@ -19,6 +19,8 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.google.android.gms.common.internal.service.Common;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -28,11 +30,14 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -63,13 +68,19 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
+    private String selected;
 
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
+    private FusedLocationProviderClient mFusedLocationClient;
 
     private final List<String> zones = new ArrayList<>();
 
     private Button btn_toggleSubscription;
+    private Button btn_subscribe;
+    private Button btn_unsubscribe;
+    private ArrayAdapter<String> dataAdapter;
+
     private Spinner spinner_zones;
 
     private OnFragmentInteractionListener mListener;
@@ -106,8 +117,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         */
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        CommonFunctions.updateAllZonesFromFirestore();
-        CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
+        CommonFunctions.updateFromFirestore(currentUser);
         for(Zone zone : Constants.zoneArrayList) {
             if(!zone.getName().equals("placeholder")) {
                 zones.add(zone.getName());
@@ -121,9 +131,146 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         View v = inflater.inflate(R.layout.fragment_zones, container, false);
 
         sharedPreferences = Objects.requireNonNull(getActivity()).getPreferences(Context.MODE_PRIVATE);
-        CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
+        selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+
+        btn_subscribe = v.findViewById(R.id.btn_subscribe);
+        btn_unsubscribe = v.findViewById(R.id.btn_unsubscribe);
+
+        btn_subscribe.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+                Zone currentZone = CommonFunctions.getZoneByName(selected);
+
+                if(currentZone.getSubscribed()) {
+                    Log.d(TAG, "owl: already subscribed to " + currentZone.getName());
+                } else {
+                    FirebaseMessaging.getInstance().subscribeToTopic(selected)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if(task.isSuccessful()) {
+                                        Map<String, Object> data = new HashMap<>();
+                                        data.put("active", true);
+                                        data.put("user", currentUser.getUid());
+                                        data.put("zone", currentZone.getId());
+                                        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                                .add(data)
+                                                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                    @Override
+                                                    public void onSuccess(DocumentReference documentReference) {
+                                                        Log.i(TAG, "owl: subscription added to database");
+                                                        CommonFunctions.updateFromFirestore(currentUser);
+                                                        updateMap(Constants.currentLocation);
+                                                        btn_subscribe.setVisibility(View.INVISIBLE);
+                                                        btn_unsubscribe.setVisibility(View.VISIBLE);
+                                                    }
+                                                })
+                                                .addOnFailureListener(new OnFailureListener() {
+                                                    @Override
+                                                    public void onFailure(@NonNull Exception e) {
+                                                        Log.d(TAG, "owl: failed to add subscription to database");
+                                                    }
+                                                });
+                                    } else {
+                                        Log.d(TAG, "owl: failed to subscribe to topic");
+                                    }
+                                }
+                            });
+                }
+            }
+        });
+
+        btn_unsubscribe.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+                Zone currentZone = CommonFunctions.getZoneByName(selected);
+
+                if(currentZone.getSubscribed()) {
+                    Log.d(TAG, "owl: unsubscribing from: " + currentZone.getName());
+
+                    FirebaseMessaging.getInstance().unsubscribeFromTopic(selected)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if(task.isSuccessful()) {
+                                        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                                                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                                                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                                                .get()
+                                                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                        if(task.isSuccessful()) {
+                                                            List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                                            for(DocumentSnapshot snapshot : snapshotList) {
+                                                                Log.i(TAG, "owl: snapshot id = " + snapshot.getId());
+                                                                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                                                        .delete()
+                                                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                            @Override
+                                                                            public void onComplete(@NonNull Task<Void> task) {
+                                                                                if(task.isSuccessful()) {
+                                                                                    Log.i(TAG, "owl: successfully deleted subscription document");
+                                                                                    CommonFunctions.updateFromFirestore(currentUser);
+                                                                                    updateMap(Constants.currentLocation);
+                                                                                    btn_subscribe.setVisibility(View.VISIBLE);
+                                                                                    btn_unsubscribe.setVisibility(View.INVISIBLE);
+                                                                                } else {
+                                                                                    Log.d(TAG, "owl: failed to delete subscription document");
+                                                                                }
+                                                                            }
+                                                                        });
+
+                                                                /*
+                                                                // Function below changes value of "active", keep for future and saving settings for zones
+                                                                Map<String, Object> zoneSubscription = new HashMap<>();
+                                                                zoneSubscription.put("active", false);
+                                                                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                                                        .set(zoneSubscription, SetOptions.merge())
+                                                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                            @Override
+                                                                            public void onComplete(@NonNull Task<Void> task) {
+                                                                                if(task.isSuccessful()) {
+                                                                                    Log.i(TAG, "owl: successfully updated database and changed active field");
+                                                                                } else {
+                                                                                    Log.d(TAG, "owl: failed to update database with unsubscribe");
+                                                                                }
+                                                                            }
+                                                                        });
+                                                                */
+                                                                /*
+                                                                for(Zone zone: Constants.zoneArrayList) {
+                                                                    if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
+                                                                        zone.setSubscribed(true);
+                                                                        Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
+                                                                    }
+
+                                                                }
+                                                                */
+                                                            }
+                                                        } else {
+                                                            Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                                        }
+                                                    }
+                                                });
+                                    } else {
+                                        Log.d(TAG, "owl: failed to unsubscribe from topic");
+                                    }
+                                }
+                            });
+                } else {
+                    Log.d(TAG, "owl: trying to unsubscribe from currently not subscribed zone");
+                }
+            }
+        });
+
+
 
         btn_toggleSubscription = v.findViewById(R.id.btn_toggleSubscription);
+        /*
         btn_toggleSubscription.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -184,15 +331,17 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             }
         });
 
+
         if(CommonFunctions.userPermissions(currentUser).equals("guest")) {
             btn_toggleSubscription.setVisibility(View.GONE);
         }
+        */
 
         spinner_zones = v.findViewById(R.id.spinner_zones);
         spinner_zones.setOnItemSelectedListener(this);
 
-
-        ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
+        //ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
+        dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         int spinnerValue = sharedPreferences.getInt(Constants.SP_SPINNERSELECTED, -1);
         Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
@@ -203,7 +352,9 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             spinner_zones.setSelection(0);
         }
 
-        updateSubscriptionText();
+        //CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
+        //updateSubscriptionText();
+        updateUI(currentUser);
 
         return v;
     }
@@ -305,6 +456,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         editor.putInt(Constants.SP_SPINNERSELECTED, userChoice).apply();
 
         updateSubscriptionText();
+        updateUI(currentUser);
     }
 
     public void onNothingSelected(AdapterView<?> parent) {
@@ -313,11 +465,46 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
     public void updateSubscriptionText() {
         Log.i(TAG, "firestore geofence: CALLING updateSubscriptionText");
         btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
+        if(spinner_zones == null) {
+            return;
+        }
+
         for(Zone zone : Constants.zoneArrayList) {
             if(zone.getSubscribed() && zone.getName().equals(spinner_zones.getSelectedItem().toString())) {
                 Log.i(TAG, "firestore geofence: IN INNER LOOP");
                 btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionUnsubscribe);
             }
+        }
+    }
+
+    /**
+     * Show/hide buttons, update text etc.
+     *
+     * @param user A Firebase user object.
+     */
+    private void updateUI(FirebaseUser user) {
+        Log.i(TAG, "owl-user: userPermissions(user) = " + CommonFunctions.userPermissions(user));
+
+        selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+        Zone currentZone = CommonFunctions.getZoneByName(selected);
+
+        if(CommonFunctions.userPermissions(user).equals("verified") || CommonFunctions.userPermissions(user).equals("registered")) {
+            btn_subscribe.setVisibility(View.VISIBLE);
+            btn_unsubscribe.setVisibility(View.VISIBLE);
+
+            if(currentZone != null && currentZone.getSubscribed()) {
+                btn_subscribe.setVisibility(View.INVISIBLE);
+                btn_unsubscribe.setVisibility(View.VISIBLE);
+            } else {
+                btn_subscribe.setVisibility(View.VISIBLE);
+                btn_unsubscribe.setVisibility(View.INVISIBLE);
+            }
+        } else if(CommonFunctions.userPermissions(user).equals("anonymous")) {
+            btn_subscribe.setVisibility(View.GONE);
+            btn_unsubscribe.setVisibility(View.GONE);
+        } else {
+            btn_subscribe.setVisibility(View.GONE);
+            btn_unsubscribe.setVisibility(View.GONE);
         }
     }
 }

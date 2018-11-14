@@ -24,6 +24,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.internal.service.Common;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -369,48 +370,12 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
      */
     private void updateUI(FirebaseUser user) {
         Log.i(TAG, "owl-user: userPermissions(user) = " + CommonFunctions.userPermissions(user));
-        if(CommonFunctions.userPermissions(user).equals("verified")) {
+        if(CommonFunctions.userPermissions(user).equals("verified") || CommonFunctions.userPermissions(user).equals("registered")) {
             btn_larmRecord.setVisibility(View.VISIBLE);
-            txt_loggedInAs.setText("User: verified as " + currentUser.getEmail());
+            txt_loggedInAs.setText("User: verified or registered as " + currentUser.getEmail());
         } else if(CommonFunctions.userPermissions(user).equals("anonymous")) {
             btn_larmRecord.setVisibility(View.GONE);
             txt_loggedInAs.setText("User: anonymous");
-        } else {
-            mAuth.signInAnonymously().addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                @Override
-                public void onComplete(@NonNull Task<AuthResult> task) {
-                    if (task.isSuccessful()) {
-                        Log.i(TAG, "owl-user: successful anonymous login");
-                        currentUser = mAuth.getCurrentUser();
-                        updateUI(currentUser);
-
-                        Map<String, Object> newUser = new HashMap<>();
-                        newUser.put(Constants.DATABASE_COLLECTION_USERS_CREATED, Timestamp.now());
-                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_LASTUPDATED, Timestamp.now());
-                        newUser.put(Constants.DATABASE_COLLECTION_USERS_FIELD_EMAIL, "anonymous");
-                        db.collection(Constants.DATABASE_COLLECTION_USERS).document(currentUser.getUid())
-                                .set(newUser)
-                                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                    @Override
-                                    public void onSuccess(Void aVoid) {
-                                        Log.i(TAG, "owl-user: successfully added anonymous user with id = " + currentUser.getUid());
-                                    }
-                                })
-                                .addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        Log.d(TAG, "owl-user: failed to add anonymous user with id = " + currentUser.getUid());
-                                    }
-                                });
-
-
-                        Log.i(TAG, "owl-user: isAnonymous() = " + currentUser.isAnonymous());
-                    } else {
-                        Log.d(TAG, "owl-user: failed anonymous login");
-                        updateUI(null);
-                    }
-                }
-            });
         }
     }
 
