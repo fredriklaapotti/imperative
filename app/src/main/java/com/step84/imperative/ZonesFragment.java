@@ -15,8 +15,11 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.google.android.gms.common.internal.service.Common;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -79,6 +82,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
     private Button btn_toggleSubscription;
     private Button btn_subscribe;
     private Button btn_unsubscribe;
+    private Switch switch_alarmOverrideSound;
+    private Switch switch_alarmNotice;
     private ArrayAdapter<String> dataAdapter;
 
     private Spinner spinner_zones;
@@ -135,6 +140,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         btn_subscribe = v.findViewById(R.id.btn_subscribe);
         btn_unsubscribe = v.findViewById(R.id.btn_unsubscribe);
+        switch_alarmOverrideSound = v.findViewById(R.id.switch_alarmOverrideSound);
+        switch_alarmNotice = v.findViewById(R.id.switch_alarmNotice);
 
         btn_subscribe.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -150,12 +157,24 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                 @Override
                                 public void onComplete(@NonNull Task<Void> task) {
                                     if(task.isSuccessful()) {
+                                        Subscription subscription = new Subscription();
+                                        subscription.active = true;
+                                        subscription.user = currentUser.getUid();
+                                        subscription.zone = currentZone.getId();
+                                        subscription.settings = new HashMap<>();
+                                        subscription.settings.put("alarm_override_sound", false);
+                                        subscription.settings.put("alarm_notice", true);
+
+                                        // Start experiment with mapping to POJO
+                                        /*
                                         Map<String, Object> data = new HashMap<>();
                                         data.put("active", true);
                                         data.put("user", currentUser.getUid());
                                         data.put("zone", currentZone.getId());
+                                        */
                                         db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
-                                                .add(data)
+                                                //.add(data)
+                                                .add(subscription)
                                                 .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
                                                     @Override
                                                     public void onSuccess(DocumentReference documentReference) {
@@ -164,6 +183,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                                         updateMap(Constants.currentLocation);
                                                         btn_subscribe.setVisibility(View.INVISIBLE);
                                                         btn_unsubscribe.setVisibility(View.VISIBLE);
+                                                        switch_alarmOverrideSound.setVisibility(View.VISIBLE);
+                                                        switch_alarmNotice.setVisibility(View.VISIBLE);
                                                     }
                                                 })
                                                 .addOnFailureListener(new OnFailureListener() {
@@ -218,6 +239,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                                                                     updateMap(Constants.currentLocation);
                                                                                     btn_subscribe.setVisibility(View.VISIBLE);
                                                                                     btn_unsubscribe.setVisibility(View.INVISIBLE);
+                                                                                    switch_alarmOverrideSound.setVisibility(View.INVISIBLE);
+                                                                                    switch_alarmNotice.setVisibility(View.INVISIBLE);
                                                                                 } else {
                                                                                     Log.d(TAG, "owl: failed to delete subscription document");
                                                                                 }
@@ -267,7 +290,97 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             }
         });
 
+        switch_alarmOverrideSound.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+                Zone currentZone = CommonFunctions.getZoneByName(selected);
 
+                if(isChecked) {
+                    currentZone.setAlarmOverrideSound(true);
+                } else {
+                    currentZone.setAlarmOverrideSound(false);
+                }
+
+                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                        .get()
+                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if(task.isSuccessful()) {
+                                    List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                    for(DocumentSnapshot snapshot : snapshotList) {
+                                        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                                .update("settings", currentZone.getSettings())
+                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if(task.isSuccessful()) {
+                                                            Log.i(TAG, "owl: successfully UPDATED subscription");
+                                                            CommonFunctions.updateFromFirestore(currentUser);
+                                                            updateMap(Constants.currentLocation);
+                                                        } else {
+                                                            Log.d(TAG, "owl: failed to UPDATE subscription document");
+                                                        }
+                                                    }
+                                                });
+                                    }
+                                } else {
+                                    Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                }
+                            }
+                        });
+            }
+        });
+
+        switch_alarmNotice.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
+                Zone currentZone = CommonFunctions.getZoneByName(selected);
+
+                if(isChecked) {
+                    currentZone.setAlarmNotice(true);
+                } else {
+                    currentZone.setAlarmNotice(false);
+                }
+
+                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                        .get()
+                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if(task.isSuccessful()) {
+                                    List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                    for(DocumentSnapshot snapshot : snapshotList) {
+                                        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                                .update("settings", currentZone.getSettings())
+                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if(task.isSuccessful()) {
+                                                            Log.i(TAG, "owl: successfully UPDATED subscription");
+                                                            CommonFunctions.updateFromFirestore(currentUser);
+                                                            updateMap(Constants.currentLocation);
+                                                        } else {
+                                                            Log.d(TAG, "owl: failed to UPDATE subscription document");
+                                                        }
+                                                    }
+                                                });
+                                    }
+                                } else {
+                                    Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                }
+                            }
+                        });
+            }
+        });
 
         btn_toggleSubscription = v.findViewById(R.id.btn_toggleSubscription);
         /*
@@ -455,6 +568,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         editor.putString(Constants.SP_SELECTEDZONE, selected).apply();
         editor.putInt(Constants.SP_SPINNERSELECTED, userChoice).apply();
 
+        dataAdapter.notifyDataSetChanged();
         updateSubscriptionText();
         updateUI(currentUser);
     }
@@ -488,6 +602,9 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
         Zone currentZone = CommonFunctions.getZoneByName(selected);
 
+        switch_alarmOverrideSound.setVisibility(View.INVISIBLE);
+        switch_alarmNotice.setVisibility(View.INVISIBLE);
+
         if(CommonFunctions.userPermissions(user).equals("verified") || CommonFunctions.userPermissions(user).equals("registered")) {
             btn_subscribe.setVisibility(View.VISIBLE);
             btn_unsubscribe.setVisibility(View.VISIBLE);
@@ -495,6 +612,19 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             if(currentZone != null && currentZone.getSubscribed()) {
                 btn_subscribe.setVisibility(View.INVISIBLE);
                 btn_unsubscribe.setVisibility(View.VISIBLE);
+                switch_alarmOverrideSound.setVisibility(View.VISIBLE);
+                switch_alarmNotice.setVisibility(View.VISIBLE);
+                if(currentZone.getSettings().get("alarm_override_sound").equals(true)) {
+                    switch_alarmOverrideSound.setChecked(true);
+                } else {
+                    switch_alarmOverrideSound.setChecked(false);
+                }
+
+                if(currentZone.getSettings().get("alarm_notice").equals(true)) {
+                    switch_alarmNotice.setChecked(true);
+                } else {
+                    switch_alarmOverrideSound.setChecked(false);
+                }
             } else {
                 btn_subscribe.setVisibility(View.VISIBLE);
                 btn_unsubscribe.setVisibility(View.INVISIBLE);

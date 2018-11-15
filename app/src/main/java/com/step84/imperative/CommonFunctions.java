@@ -30,6 +30,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,8 @@ public class CommonFunctions {
                                                         for(Zone zone: Constants.zoneArrayList) {
                                                             if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
                                                                 zone.setSubscribed(true);
+                                                                Subscription subscription = snapshot.toObject(Subscription.class);
+                                                                zone.setSettings(subscription.settings);
                                                                 Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
                                                             }
 
