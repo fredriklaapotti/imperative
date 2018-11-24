@@ -125,7 +125,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
             triggeringGeofencesIdsList.add(geofence.getRequestId());
         }
         String triggeringGeofencesIdsString = TextUtils.join(", ", triggeringGeofencesIdsList);
-        return geofenceTransitionString + ": " + triggeringGeofencesIdsString;
+        return geofenceTransitionString + ":" + triggeringGeofencesIdsString;
     }
 
     /**
@@ -139,10 +139,10 @@ public class GeofenceTransitionsIntentService extends IntentService {
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 //return getString(R.string.geofence_transition_entered);
-                return "geofence enter";
+                return "enter";
             case Geofence.GEOFENCE_TRANSITION_EXIT:
                 //return getString(R.string.geofence_transition_exited);
-                return "geofence exit";
+                return "exit";
             default:
                 //return getString(R.string.unknown_geofence_transition);
                 return "unknown geofence transition";

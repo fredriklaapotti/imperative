@@ -2,18 +2,27 @@ package com.step84.imperative;
 
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.view.View;
 
+import com.google.android.gms.common.internal.service.Common;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.messaging.FirebaseMessaging;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+
+import static com.step84.imperative.ZonesFragment.updateMap;
 
 public class FirestoreFunctions {
     private static final String TAG = "FirestoreFunctions";
@@ -92,11 +101,95 @@ public class FirestoreFunctions {
         Log.i(TAG, "owl: interface: 3");
     }
 
-    public static void subscribe(FirebaseUser firebaseUser, Zone zone, final FirestoreListener listener) {
+    public static void subscribe(FirebaseUser currentUser, Zone currentZone, final FirestoreListener listener) {
         // Subscribe
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        listener.onStart();
+
+        FirebaseMessaging.getInstance().subscribeToTopic(currentZone.getName())
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Log.i(TAG, "owl: interface: successfully subscribed to topic");
+                            Subscription subscription = new Subscription();
+                            subscription.active = true;
+                            subscription.user = currentUser.getUid();
+                            subscription.zone = currentZone.getId();
+                            subscription.settings = new HashMap<>();
+                            subscription.settings.put("alarm_override_sound", false);
+                            subscription.settings.put("alarm_notice", true);
+
+                            db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                    .add(subscription)
+                                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                        @Override
+                                        public void onSuccess(DocumentReference documentReference) {
+                                            Log.i(TAG, "owl: subscription added to database");
+                                            CommonFunctions.updateFromFirestore(currentUser);
+                                        }
+                                    })
+                                    .addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            Log.d(TAG, "owl: failed to add subscription to database");
+                                        }
+                                    });
+                            listener.onSuccess();
+                        } else {
+                            Log.d(TAG, "owl: interface: failed subscribeToTopic");
+                            listener.onFailed();
+                        }
+                    }
+        });
     }
 
-    public static void unsubscribe(FirebaseUser firebaseUser, Zone zone, final FirestoreListener listener) {
+    public static void unsubscribe(FirebaseUser currentUser, Zone currentZone, final FirestoreListener listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        listener.onStart();
 
+        FirebaseMessaging.getInstance().unsubscribeFromTopic(currentZone.getName())
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if(task.isSuccessful()) {
+                            db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                    .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                                    .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                                    .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                                    .get()
+                                    .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                            if(task.isSuccessful()) {
+                                                List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                                for(DocumentSnapshot snapshot : snapshotList) {
+                                                    Log.i(TAG, "owl: snapshot id = " + snapshot.getId());
+                                                    db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                                            .delete()
+                                                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                @Override
+                                                                public void onComplete(@NonNull Task<Void> task) {
+                                                                    if(task.isSuccessful()) {
+                                                                        Log.i(TAG, "owl: successfully deleted subscription document");
+                                                                        CommonFunctions.updateFromFirestore(currentUser);
+                                                                        listener.onSuccess();
+                                                                    } else {
+                                                                        Log.d(TAG, "owl: failed to delete subscription document");
+                                                                    }
+                                                                }
+                                                            });
+                                                }
+                                            } else {
+                                                Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                            }
+                                        }
+                                    });
+                        } else {
+                            Log.d(TAG, "owl: failed to unsubscribe from topic");
+                            listener.onFailed();
+                        }
+                    }
+                });
     }
 }

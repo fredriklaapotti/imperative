@@ -24,6 +24,7 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -40,6 +41,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -69,6 +71,8 @@ public class MainActivity
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
+    private FirebaseUser currentUser;
+    private FirebaseAuth mAuth;
 
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationRequest mLocationRequest;
@@ -150,6 +154,9 @@ public class MainActivity
                 .build();
         firestore.setFirestoreSettings(settings);
 
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<android.location.Location>() {
             @Override
@@ -194,13 +201,44 @@ public class MainActivity
         mGeofencingClient = LocationServices.getGeofencingClient(this);
 
         // EXPERIMENT
-
         BroadcastReceiver messageReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String intentMessage = intent.getStringExtra(Constants.BROADCAST_GEOFENCEPUDATE_ZONE);
                 Log.i(TAG, "geofence: got onReceive() in MainActivity, intentMessage = " + intentMessage);
+                //Log.i(TAG, "geofence: got onReceive() in MainActivity, intent.getDataString() = " + intent.getDataString());
                 Toast.makeText(context, intentMessage, Toast.LENGTH_LONG).show();
+                String[] zoneNames = TextUtils.split(intentMessage, ":");
+                Log.i(TAG, "owl: geofence onReceive() = " + zoneNames[1]);
+                Zone currentZone = CommonFunctions.getZoneByName(zoneNames[1]);
+
+                if(zoneNames[0].equals("enter")) {
+                    FirestoreFunctions.subscribe(currentUser, currentZone, new FirestoreFunctions.FirestoreListener() {
+                        @Override
+                        public void onStart() {}
+
+                        @Override
+                        public void onSuccess() {
+                            Log.i(TAG, "owl: geofence onReceive() SUBSCRIBE success");
+                        }
+
+                        @Override
+                        public void onFailed() {}
+                    });
+                } else if(zoneNames[0].equals("exit")) {
+                    FirestoreFunctions.unsubscribe(currentUser, currentZone, new FirestoreFunctions.FirestoreListener() {
+                        @Override
+                        public void onStart() {}
+
+                        @Override
+                        public void onSuccess() {
+                            Log.i(TAG, "owl: geofence onReceive UNSUBSCRIBE success");
+                        }
+
+                        @Override
+                        public void onFailed() {}
+                    });
+                }
             }
         };
 
@@ -362,6 +400,7 @@ public class MainActivity
                 if (task.isSuccessful()) {
                     Log.i(TAG, "firestore geofence: in onComplete loop");
                     for (QueryDocumentSnapshot document : Objects.requireNonNull(task.getResult())) {
+                        String id = Objects.requireNonNull(document.getId());
                         String name = Objects.requireNonNull(document.get("name")).toString();
                         double lat = Objects.requireNonNull(document.getGeoPoint("latlng")).getLatitude();
                         double lng = Objects.requireNonNull(document.getGeoPoint("latlng")).getLongitude();
@@ -377,7 +416,7 @@ public class MainActivity
                                 .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                                 .build());
-                        Constants.zoneArrayList.add(new Zone("Y", name, new LatLng(lat, lng), radius, false));
+                        Constants.zoneArrayList.add(new Zone(id, name, new LatLng(lat, lng), radius, false));
                     }
                     addGeofences();
                 } else {
