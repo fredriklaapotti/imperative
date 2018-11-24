@@ -5,10 +5,12 @@ package com.step84.imperative;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 
@@ -109,6 +111,8 @@ public class CommonFunctions {
     public static void updateFromFirestore(FirebaseUser firebaseUser) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+        //Intent intent = new Intent("firestore-updated");
+
         // Updates all zones from the database and puts them in zoneArrayList
         db.collection(Constants.DATABASE_COLLECTION_ZONES)
                 .get()
@@ -158,31 +162,8 @@ public class CommonFunctions {
                                                 }
                                             }
                                         });
-                                        /*
-                                        .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-                                            @Override
-                                            public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                                                List<DocumentSnapshot> snapshotList = queryDocumentSnapshots.getDocuments();
-                                                for(DocumentSnapshot snapshot : snapshotList) {
-                                                    Log.i(TAG, "owl-user: found subscription for user = " + firebaseUser.getUid() + " for zone = " + snapshot.get("zone"));
-                                                    for(Zone zone: Constants.zoneArrayList) {
-                                                        if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
-                                                            zone.setSubscribed(true);
-                                                            Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
-                                                        }
-
-                                                    }
-                                                }
-                                            }
-                                        })
-                                        .addOnFailureListener(new OnFailureListener() {
-                                            @Override
-                                            public void onFailure(@NonNull Exception e) {
-                                                Log.d(TAG, "owl: failed to fetch subscription documents");
-                                            }
-                                        });
-                                        */
                             }
+                            //LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                         } else {
                             Log.d(TAG, "owl: firebase user doesn't exist");
                         }
@@ -300,6 +281,8 @@ public class CommonFunctions {
         }
         return "unknown";
     }
+
+
 }
 
                                     /*

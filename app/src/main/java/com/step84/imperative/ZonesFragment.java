@@ -1,6 +1,9 @@
 package com.step84.imperative;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
@@ -8,6 +11,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.location.Location;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,6 +20,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.Toast;
@@ -63,6 +68,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
     private static GoogleMap mMap;
+    private View mapView;
+    private BroadcastReceiver broadcastReceiver;
 
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
@@ -122,12 +129,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         */
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        LocalBroadcastManager.getInstance(Objects.requireNonNull(getContext())).registerReceiver(broadcastReceiver, new IntentFilter("firestore-updated"));
         CommonFunctions.updateFromFirestore(currentUser);
-        for(Zone zone : Constants.zoneArrayList) {
-            if(!zone.getName().equals("placeholder")) {
-                zones.add(zone.getName());
-            }
-        }
     }
 
     @Override
@@ -140,8 +143,12 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         btn_subscribe = v.findViewById(R.id.btn_subscribe);
         btn_unsubscribe = v.findViewById(R.id.btn_unsubscribe);
+        btn_subscribe.setVisibility(View.INVISIBLE);
+        btn_unsubscribe.setVisibility(View.INVISIBLE);
         switch_alarmOverrideSound = v.findViewById(R.id.switch_alarmOverrideSound);
         switch_alarmNotice = v.findViewById(R.id.switch_alarmNotice);
+        switch_alarmOverrideSound.setVisibility(View.INVISIBLE);
+        switch_alarmNotice.setVisibility(View.INVISIBLE);
 
         btn_subscribe.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -165,15 +172,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                         subscription.settings.put("alarm_override_sound", false);
                                         subscription.settings.put("alarm_notice", true);
 
-                                        // Start experiment with mapping to POJO
-                                        /*
-                                        Map<String, Object> data = new HashMap<>();
-                                        data.put("active", true);
-                                        data.put("user", currentUser.getUid());
-                                        data.put("zone", currentZone.getId());
-                                        */
                                         db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
-                                                //.add(data)
                                                 .add(subscription)
                                                 .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
                                                     @Override
@@ -383,91 +382,41 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         });
 
         btn_toggleSubscription = v.findViewById(R.id.btn_toggleSubscription);
-        /*
-        btn_toggleSubscription.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
-                if(btn_toggleSubscription.getText().toString().equals(getString(R.string.btn_toggleSubscriptionSubscribe))) {
-                    FirebaseMessaging.getInstance().subscribeToTopic(selected)
-                            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    if(task.isSuccessful()) {
-                                        Map<String, Object> topics = new HashMap<>();
-                                        Map<String, Object> topic = new HashMap<>();
-                                        topic.put(selected, Timestamp.now());
-                                        topics.put("topics", topic);
-                                        db.collection("users").document(sharedPreferences.getString(Constants.SP_EMAIL, "")).set(topics, SetOptions.merge());
-
-                                        // TODO: redesign, is it possible to loop over a list of objects in the object class?
-                                        for(Zone zone : Constants.zoneArrayList) {
-                                            if(zone.getName().equals(selected)) {
-                                                zone.setSubscribed(true);
-                                            }
-                                        }
-
-                                        Log.i(TAG, "firestore: successfully subscribed to topic " + sharedPreferences.getString(Constants.SP_SELECTEDZONE, "") + "and updated database");
-                                        btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionUnsubscribe);
-                                    }
-                                }
-                            });
-                } else if(btn_toggleSubscription.getText().toString().equals(getString(R.string.btn_toggleSubscriptionUnsubscribe))) {
-                    FirebaseMessaging.getInstance().unsubscribeFromTopic(selected)
-                            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    if(task.isSuccessful()) {
-                                        Map<String, Object> topics = new HashMap<>();
-                                        Map<String, Object> topic = new HashMap<>();
-                                        topic.put(selected, FieldValue.delete());
-                                        topics.put("topics", topic);
-                                        Log.i(TAG, "firestore geofence: TRYING TO UNSUBSCRIBE" + sharedPreferences.getString(Constants.SP_EMAIL, ""));
-                                        db.collection("users").document(sharedPreferences.getString(Constants.SP_EMAIL, "")).set(topics, SetOptions.merge());
-
-                                        for(Zone zone : Constants.zoneArrayList) {
-                                            if (zone.getName().equals(selected)) {
-                                                zone.setSubscribed(false);
-                                            }
-                                        }
-
-                                        Log.i(TAG, "firestore: successfully unsubscribed to topic " + sharedPreferences.getString(Constants.SP_SELECTEDZONE, "") + "and updated database");
-                                        btn_toggleSubscription.setText(R.string.btn_toggleSubscriptionSubscribe);
-                                    }
-                                }
-                            });
-                } else {
-                    return;
-                }
-                CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
-                updateSubscriptionText();
-            }
-        });
-
-
-        if(CommonFunctions.userPermissions(currentUser).equals("guest")) {
-            btn_toggleSubscription.setVisibility(View.GONE);
-        }
-        */
 
         spinner_zones = v.findViewById(R.id.spinner_zones);
         spinner_zones.setOnItemSelectedListener(this);
+        spinner_zones.setVisibility(View.INVISIBLE);
 
-        //ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
-        dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
-        dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        int spinnerValue = sharedPreferences.getInt(Constants.SP_SPINNERSELECTED, -1);
-        Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
-        spinner_zones.setAdapter(dataAdapter);
-        if(spinnerValue != -1 && spinnerValue < zones.size()) {
-            spinner_zones.setSelection(spinnerValue);
-        } else {
-            spinner_zones.setSelection(0);
-        }
+        FirestoreFunctions.updateZones(currentUser, new FirestoreFunctions.FirestoreListener() {
+            @Override
+            public void onStart() {}
 
-        //CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
-        //updateSubscriptionText();
-        updateUI(currentUser);
+            @Override
+            public void onSuccess() {
+                zones.clear();
+                for(Zone zone : Constants.zoneArrayList) {
+                    if(!zone.getName().equals("placeholder")) {
+                        zones.add(zone.getName());
+                    }
+                }
+
+                dataAdapter = new ArrayAdapter<>(Objects.requireNonNull(getContext()), android.R.layout.simple_spinner_item, zones);
+                dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                int spinnerValue = sharedPreferences.getInt(Constants.SP_SPINNERSELECTED, -1);
+                Log.i(TAG, "geofence: userChoiceSpinner = " + spinnerValue);
+                spinner_zones.setAdapter(dataAdapter);
+                if(spinnerValue != -1 && spinnerValue < zones.size()) {
+                    spinner_zones.setSelection(spinnerValue);
+                } else {
+                    spinner_zones.setSelection(0);
+                }
+                spinner_zones.setVisibility(View.VISIBLE);
+                updateUI(currentUser);
+            }
+
+            @Override
+            public void onFailed() {}
+        });
 
         return v;
     }
@@ -480,6 +429,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
             if(mapFragment != null) {
                 mapFragment.getMapAsync(this);
+                mapView = mapFragment.getView();
+
             }
         }
     }
@@ -555,7 +506,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             MarkerOptions mp = new MarkerOptions();
             mp.position(new LatLng(location.getLatitude(), location.getLongitude()));
             mMap.addMarker(mp);
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
+            //mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
         }
     }
 
@@ -601,6 +552,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
 
         selected = sharedPreferences.getString(Constants.SP_SELECTEDZONE, "");
         Zone currentZone = CommonFunctions.getZoneByName(selected);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentZone.getLatlng(), 15));
 
         switch_alarmOverrideSound.setVisibility(View.INVISIBLE);
         switch_alarmNotice.setVisibility(View.INVISIBLE);
@@ -614,17 +566,21 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                 btn_unsubscribe.setVisibility(View.VISIBLE);
                 switch_alarmOverrideSound.setVisibility(View.VISIBLE);
                 switch_alarmNotice.setVisibility(View.VISIBLE);
-                if(currentZone.getSettings().get("alarm_override_sound").equals(true)) {
+                // Currently crashes
+
+                if(currentZone.getSettings().get("alarm_override_sound").equals(true) && currentZone.getSettings().get("alarm_override_sound") != null) {
                     switch_alarmOverrideSound.setChecked(true);
                 } else {
                     switch_alarmOverrideSound.setChecked(false);
                 }
+
 
                 if(currentZone.getSettings().get("alarm_notice").equals(true)) {
                     switch_alarmNotice.setChecked(true);
                 } else {
                     switch_alarmOverrideSound.setChecked(false);
                 }
+
             } else {
                 btn_subscribe.setVisibility(View.VISIBLE);
                 btn_unsubscribe.setVisibility(View.INVISIBLE);

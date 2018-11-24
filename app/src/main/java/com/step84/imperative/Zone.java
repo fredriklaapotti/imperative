@@ -9,6 +9,7 @@ import java.util.Map;
  * Local zone object to mirror the ones from database.
  * Implemented as an ArrayList<Zone> zoneArrayList in Constants.zoneArrayList
  */
+
 public class Zone {
     private final String id;
     private final String name;

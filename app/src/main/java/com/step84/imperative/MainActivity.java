@@ -40,12 +40,15 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -128,6 +131,7 @@ public class MainActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(TAG, "owl: in MainActivity onCreate()");
         setContentView(R.layout.activity_main);
 
         Intent intent = new Intent(this, AlarmService.class);
@@ -190,6 +194,7 @@ public class MainActivity
         mGeofencingClient = LocationServices.getGeofencingClient(this);
 
         // EXPERIMENT
+
         BroadcastReceiver messageReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -198,6 +203,7 @@ public class MainActivity
                 Toast.makeText(context, intentMessage, Toast.LENGTH_LONG).show();
             }
         };
+
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, new IntentFilter(Constants.BROADCAST_GEOFENCEUPDATE));
         // END EXPERIMENT
 
@@ -231,12 +237,11 @@ public class MainActivity
             startLocationUpdates();
         }
         */
-
     }
 
     private void startLocationUpdates() {
         Log.i(TAG, "LOCATION: in startLocationUpdates()");
-        //LocationRequest mLocationRequest = new LocationRequest(); // Changed 181104, try with class-private variable instad
+        //LocationRequest mLocationRequest = new LocationRequest(); // Changed 181104, try with class-private variable instead
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
         mLocationRequest.setFastestInterval(5000);
@@ -436,6 +441,69 @@ public class MainActivity
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             Objects.requireNonNull(notificationManager).createNotificationChannel(channel);
         }
+    }
+
+    public void updateFirestore(FirebaseUser firebaseUser) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        Intent intent = new Intent("firestore-updated");
+
+        // Updates all zones from the database and puts them in zoneArrayList
+        db.collection(Constants.DATABASE_COLLECTION_ZONES)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            Constants.zoneArrayList.clear();
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                String id = Objects.requireNonNull(document.getId());
+                                String name = Objects.requireNonNull(document.get("name")).toString();
+                                double lat = Objects.requireNonNull(document.getGeoPoint("latlng")).getLatitude();
+                                double lng = Objects.requireNonNull(document.getGeoPoint("latlng")).getLongitude();
+                                double radius = Objects.requireNonNull(document.getDouble("radius"));
+                                boolean subscribed = false;
+
+                                Constants.zoneArrayList.add(new Zone(id, name, new LatLng(lat, lng), radius, subscribed));
+                                Log.i(TAG, "owl-zones: fetched document " + document.get("name") + " with id = " + document.getId() + " and added to Constants.zoneArrayList");
+                            }
+
+                            // zoneArrayList updated, check if user is logged in and update subscriptions
+                            if(firebaseUser != null) {
+                                db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, firebaseUser.getUid())
+                                        .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                                        .get()
+                                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                if(task.isSuccessful()) {
+                                                    List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                                    Log.i(TAG, "owl: in task.isSuccessful, should only be called once");
+                                                    for(DocumentSnapshot snapshot : snapshotList) {
+                                                        Log.i(TAG, "owl-user: found subscription for user = " + firebaseUser.getUid() + " for zone = " + snapshot.get("zone"));
+                                                        for(Zone zone: Constants.zoneArrayList) {
+                                                            if(zone.getId().equals(snapshot.get(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE))) {
+                                                                zone.setSubscribed(true);
+                                                                Subscription subscription = snapshot.toObject(Subscription.class);
+                                                                zone.setSettings(subscription.settings);
+                                                                Log.i(TAG, "owl-user: updated subscriber flag for zone = " + zone.getName());
+                                                            }
+
+                                                        }
+                                                    }
+                                                } else {
+                                                    Log.d(TAG, "owl: failed to update subscriptions in updateFromFirestore()");
+                                                }
+                                            }
+                                        });
+                            }
+                            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+                        } else {
+                            Log.d(TAG, "owl: firebase user doesn't exist");
+                        }
+                    }
+                });
     }
 }
 

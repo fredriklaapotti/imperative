@@ -62,7 +62,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
             return;
         }
 
-        Intent broadcastIntent = new Intent("geofence-update");
+        Intent broadcastIntent = new Intent(Constants.BROADCAST_GEOFENCEUPDATE);
 
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
         if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
