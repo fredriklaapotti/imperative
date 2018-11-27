@@ -20,7 +20,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
+import android.view.animation.RotateAnimation;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -65,6 +68,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private FirebaseStorage storage;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
+    private Zone currentZone;
 
     private final static String TAG = HomeFragment.class.getSimpleName();
     private MediaRecorder myAudioRecorder;
@@ -72,6 +76,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
     private String outputFile;
     private Uri downloadUri;
 
+    private ImageButton imgbtn_larmRecord;
     private Button btn_larmRecord;
     private TextView txt_loggedInAs;
 
@@ -127,8 +132,6 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         CommonFunctions.updateSubscriptionsFromFirestore("users", sharedPreferences.getString(Constants.SP_EMAIL, ""));
         CommonFunctions.updateSubscriptionsFromFirestore2(currentUser);
-
-
     }
 
     /**
@@ -148,6 +151,7 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         TextView txtSelectedZone = v.findViewById(R.id.txt_selectedZone);
         Button btn_larmPreset = v.findViewById(R.id.btn_larmPreset);
         Button btn_larmCustom = v.findViewById(R.id.btn_larmCustom);
+        imgbtn_larmRecord = v.findViewById(R.id.imgbtn_larmRecord);
         btn_larmRecord = v.findViewById(R.id.btn_larmRecord);
         txt_loggedInAs = v.findViewById(R.id.txt_loggedInAs);
         sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
@@ -241,6 +245,162 @@ public class HomeFragment extends Fragment implements MediaPlayer.OnCompletionLi
         outputFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/alarmrecording.3gp";
 
         storageReference = storage.getReference().child(outputFile);
+
+
+        Button btn_checkSub = v.findViewById(R.id.btn_checkSubscribed);
+        btn_checkSub.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i(TAG, "owl: interface: pushed button");
+                currentZone = CommonFunctions.getZoneByName(sharedPreferences.getString(Constants.SP_SELECTEDZONE,""));
+                if(currentUser != null && currentZone != null) {
+                    FirestoreFunctions.isSubscribed(Objects.requireNonNull(currentUser), Objects.requireNonNull(currentZone), new FirestoreFunctions.FirestoreListener() {
+                        @Override
+                        public void onStart() {}
+
+                        @Override
+                        public void onSuccess() {
+                            Log.i(TAG, "owl: interface: user = " + currentUser.getEmail() + ", subscribed to zone = " + currentZone.getName());
+                        }
+
+                        @Override
+                        public void onFailed() {
+                            Log.i(TAG, "owl: interface: user = " + currentUser.getEmail() + " not subscribed to zone");
+                        }
+                    });
+                }
+            }
+        });
+
+
+        // NEW: IMAGE BUTTON
+        imgbtn_larmRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                RotateAnimation rotateAnimation = (RotateAnimation) AnimationUtils.loadAnimation(getContext(), R.anim.ic_record_anim);
+                if(!recording) {
+
+                    Log.i(TAG, "audio: recording is true, starting routine");
+                    recording = true;
+
+                    myAudioRecorder = new MediaRecorder();
+                    myAudioRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                    myAudioRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                    myAudioRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
+                    myAudioRecorder.setOutputFile(outputFile);
+                    try {
+                        Log.i(TAG, "audio: in try clause, calling prepare() and start()");
+                        myAudioRecorder.prepare();
+                        myAudioRecorder.start();
+                    } catch (IllegalStateException ise) {
+                        Log.d(TAG, "audio: recording caught IllegalStateException");
+                        return;
+                    } catch (IOException ioe) {
+                        Log.d(TAG, "audio recording caught IOException");
+                        return;
+                    }
+
+                    imgbtn_larmRecord.startAnimation(rotateAnimation);
+                } else {
+                    recording = false;
+                    imgbtn_larmRecord.clearAnimation();
+                    myAudioRecorder.stop();
+                    myAudioRecorder.reset();
+
+                    file = Uri.fromFile(new File(outputFile));
+                    uploadTask = storageReference.putFile(file);
+
+                    uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            Log.i(TAG, "audio: uploaded");
+                        }
+                    }).addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Log.d(TAG, "audioUpload: failed to upload");
+                        }
+                    });
+
+                    Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                        @Override
+                        public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                            if (!task.isSuccessful()) {
+                                throw Objects.requireNonNull(task.getException());
+                            }
+
+                            return storageReference.getDownloadUrl();
+                        }
+                    }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Uri> task) {
+                            if(task.isSuccessful()) {
+                                downloadUri = task.getResult();
+                                Log.i(TAG, "audioUpload: task successful, got " + Objects.requireNonNull(downloadUri).toString());
+
+                                if (sharedPreferences.getString(Constants.SP_SELECTEDZONE, "").equals("")) {
+                                    Log.d(TAG, "firestore: no selected zone");
+                                    return;
+                                }
+
+                                /*
+                                try {
+                                    String encodedUrl = URLEncoder.encode(downloadUri.toString(), "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new AssertionError("UTF-8 not supported");
+                                }
+                                */
+
+                                Map<String, Object> data = new HashMap<>();
+                                data.put("activated", Timestamp.now());
+                                data.put("type", "record");
+                                data.put("source", sharedPreferences.getString("email", ""));
+                                data.put("zone", sharedPreferences.getString(Constants.SP_SELECTEDZONE, ""));
+                                //data.put("alarmfile", encodedUrl); // TODO: research differences between encoding the URL or leaving as-is
+                                data.put("alarmfile", downloadUri.toString());
+
+                                db.collection("alarms")
+                                        .add(data)
+                                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                            @Override
+                                            public void onSuccess(DocumentReference documentReference) {
+                                                Log.i(TAG, "firestore: added alarm");
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                Log.i(TAG, "firestore: failed to add alarm");
+                                            }
+                                        });
+                            } else {
+                                Log.d(TAG, "audioUpload: failed to get download URL");
+                            }
+                        }
+                    });
+
+                    // TODO: I don't think we really need to instances of MediaPlayer
+                    MediaPlayer mediaPlayer2 = new MediaPlayer();
+                    try {
+                        Log.i(TAG, "audio: playback calling setDataSource with " + outputFile);
+                        mediaPlayer2.setDataSource(outputFile);
+                        //mediaPlayer2.prepareAsync();
+                        mediaPlayer2.prepare();
+                        mediaPlayer2.start();
+                        //mediaPlayer2.release(); // Where should we call release on the audio objects?
+                    } catch (IllegalStateException ise) {
+                        Log.d(TAG, "audio: playback caught IllegalStateException");
+                        return;
+                    } catch (IOException ioe) {
+                        Log.d(TAG, "audio: playback caught IOException");
+                        return;
+                    }
+
+                    btn_larmRecord.setText("Record and larm");
+                }
+            }
+        });
+        // END: IMAGE BUTTON
 
         btn_larmRecord.setOnClickListener(new View.OnClickListener() {
             @Override

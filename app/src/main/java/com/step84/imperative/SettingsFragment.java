@@ -74,6 +74,7 @@ public class SettingsFragment extends Fragment {
     private Button btn_userLogin;
     private Button btn_userLogout;
     private Button btn_userVerify;
+    private Button btn_userAnonymous;
 
     private String documentId;
 
@@ -128,6 +129,7 @@ public class SettingsFragment extends Fragment {
         btn_userLogin = v.findViewById(R.id.btn_userLogin);
         btn_userLogout = v.findViewById(R.id.btn_userLogout);
         btn_userVerify = v.findViewById(R.id.btn_userVerify);
+        btn_userAnonymous = v.findViewById(R.id.btn_userAnonymous);
 
         currentUser = mAuth.getCurrentUser();
         //updateUI(currentUser);
@@ -245,6 +247,26 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        btn_userAnonymous.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sharedPreferences.edit().putString(Constants.SP_EMAIL, txt_email.getText().toString()).apply();
+
+                mAuth.signInAnonymously()
+                        .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<AuthResult> task) {
+                                if(task.isSuccessful()) {
+                                    currentUser = mAuth.getCurrentUser();
+                                    updateUI(currentUser);
+                                } else {
+                                    Log.d(TAG, "owl: failed to signin as anonymous");
+                                }
+                            }
+                        });
+            }
+        });
+
         //updateUserDb("create");
         updateUI(currentUser);
 
@@ -305,6 +327,7 @@ public class SettingsFragment extends Fragment {
             btn_userCreate.setVisibility(View.GONE);
             btn_userLogin.setVisibility(View.GONE);
             btn_userLogout.setVisibility(View.VISIBLE);
+            btn_userAnonymous.setVisibility(View.GONE);
             txt_password.setVisibility(View.GONE);
 
             if(firebaseUser.isEmailVerified()) {
@@ -320,13 +343,17 @@ public class SettingsFragment extends Fragment {
             Log.i(TAG, "auth: firebaseuser: " + firebaseUser.getEmail() + " " + firebaseUser.getMetadata());
         } else if(CommonFunctions.userPermissions(firebaseUser).equals("anonymous")) {
             btn_userCreate.setVisibility(View.VISIBLE);
-            btn_userLogin.setVisibility(View.VISIBLE);
-            btn_userLogout.setVisibility(View.GONE);
+            btn_userLogin.setVisibility(View.GONE);
+            btn_userLogout.setVisibility(View.VISIBLE);
+            btn_userAnonymous.setVisibility(View.GONE);
             btn_userVerify.setVisibility(View.GONE);
+            txt_email.setVisibility(View.VISIBLE);
+            txt_email.setText("Enter e-mail to create account");
             txt_password.setVisibility(View.VISIBLE);
         } else {
             btn_userCreate.setVisibility(View.VISIBLE);
             btn_userLogin.setVisibility(View.VISIBLE);
+            btn_userAnonymous.setVisibility(View.VISIBLE);
             btn_userLogout.setVisibility(View.GONE);
             btn_userVerify.setVisibility(View.GONE);
             txt_password.setVisibility(View.VISIBLE);

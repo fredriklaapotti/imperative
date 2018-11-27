@@ -27,6 +27,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.Window;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -187,7 +188,7 @@ public class MainActivity
                     if(isMapReady.equals("true")) {
                         ZonesFragment.updateMap(location);
                     } else {
-                        Log.i(TAG, "geofence: map not ready");
+                        //Log.i(TAG, "geofence: map not ready");
                     }
                 }
             }
@@ -211,8 +212,9 @@ public class MainActivity
                 String[] zoneNames = TextUtils.split(intentMessage, ":");
                 Log.i(TAG, "owl: geofence onReceive() = " + zoneNames[1]);
                 Zone currentZone = CommonFunctions.getZoneByName(zoneNames[1]);
+                currentUser = mAuth.getCurrentUser();
 
-                if(zoneNames[0].equals("enter")) {
+                if(zoneNames[0].equals("enter") && currentUser != null) {
                     FirestoreFunctions.subscribe(currentUser, currentZone, new FirestoreFunctions.FirestoreListener() {
                         @Override
                         public void onStart() {}
@@ -225,7 +227,7 @@ public class MainActivity
                         @Override
                         public void onFailed() {}
                     });
-                } else if(zoneNames[0].equals("exit")) {
+                } else if(zoneNames[0].equals("exit") && currentUser != null) {
                     FirestoreFunctions.unsubscribe(currentUser, currentZone, new FirestoreFunctions.FirestoreListener() {
                         @Override
                         public void onStart() {}
@@ -281,8 +283,8 @@ public class MainActivity
         Log.i(TAG, "LOCATION: in startLocationUpdates()");
         //LocationRequest mLocationRequest = new LocationRequest(); // Changed 181104, try with class-private variable instead
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
+        mLocationRequest.setInterval(10 * 1000);
+        mLocationRequest.setFastestInterval(5 * 1000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
@@ -345,7 +347,7 @@ public class MainActivity
             // Added 181104, continue location updates in background
             if(mLocationRequest != null) {
                 mLocationRequest.setInterval(60 * 1000);
-                mLocationRequest.setFastestInterval(5 * 1000);
+                mLocationRequest.setFastestInterval(10 * 1000);
                 mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
                 Log.i(TAG, "LOCATION: in onPause(), mLocationRequest settings = " + mLocationRequest.getPriority());
             }

@@ -13,6 +13,7 @@ import android.support.v4.app.Fragment;
 import android.location.Location;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,11 +32,14 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMapOptions;
+import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -228,7 +232,8 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                                                             for(DocumentSnapshot snapshot : snapshotList) {
                                                                 Log.i(TAG, "owl: snapshot id = " + snapshot.getId());
                                                                 db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
-                                                                        .delete()
+                                                                        //.delete()
+                                                                        .update("active", false)
                                                                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                                                                             @Override
                                                                             public void onComplete(@NonNull Task<Void> task) {
@@ -418,6 +423,7 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
             public void onFailed() {}
         });
 
+
         return v;
     }
 
@@ -486,6 +492,12 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
         if(location != null) {
             Log.i(TAG, "geofence: updateMap() with arguments: " + location.getLatitude() + " " + location.getLongitude());
             mMap.clear();
+            mMap.setMyLocationEnabled(true);
+            mMap.getUiSettings().setZoomControlsEnabled(true);
+            mMap.getUiSettings().setMyLocationButtonEnabled(true);
+            mMap.getUiSettings().setZoomGesturesEnabled(true);
+            mMap.setPadding(0, 0, 0, 0);
+            List<Marker> markers = new ArrayList<>();
 
             int fillColor;
             for (Zone zone : Constants.zoneArrayList) {
@@ -500,12 +512,30 @@ public class ZonesFragment extends Fragment implements OnMapReadyCallback, Adapt
                         .radius(zone.getRadius())
                         .strokeColor(Color.BLUE)
                         .strokeWidth(5)
+                        .clickable(true)
                         .fillColor(fillColor));
+
+                String snippet = "Radius: " + zone.getRadius();
+                Marker infoMarker = mMap.addMarker(new MarkerOptions()
+                        .position(zone.getLatlng())
+                        .alpha(0)
+                        .title(zone.getName()).snippet("testar")
+                        .snippet(snippet));
+                markers.add(infoMarker);
             }
 
+            mMap.setOnCircleClickListener(new GoogleMap.OnCircleClickListener() {
+                @Override
+                public void onCircleClick(Circle circle) {
+                    // Keep for perhaps future use?
+                }
+            });
+
+            /*
             MarkerOptions mp = new MarkerOptions();
             mp.position(new LatLng(location.getLatitude(), location.getLongitude()));
-            mMap.addMarker(mp);
+            mMap.addMarker(mp).setTitle("current location");
+            */
             //mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
         }
     }

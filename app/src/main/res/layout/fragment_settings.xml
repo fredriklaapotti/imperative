@@ -5,6 +5,18 @@
     android:layout_height="match_parent"
     tools:context=".SettingsFragment">
 
+    <Button
+        android:id="@+id/btn_userAnonymous"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btn_userLogout"
+        android:layout_alignStart="@+id/btn_userLogout"
+        android:layout_alignEnd="@+id/btn_userLogout"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="11dp"
+        android:layout_marginEnd="0dp"
+        android:text="Anon" />
+
     <EditText
         android:id="@+id/txt_email"
         android:layout_width="wrap_content"

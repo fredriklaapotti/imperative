@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -54,5 +55,27 @@
         android:layout_marginStart="71dp"
         android:layout_marginTop="32dp"
         android:text="Placeholder text" />
+
+    <ImageButton
+        android:id="@+id/imgbtn_larmRecord"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_above="@+id/btn_larmPreset"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="72dp"
+        android:layout_marginBottom="0dp"
+        android:scaleType="fitCenter"
+        android:background="@android:color/transparent"
+        android:src="@drawable/btn_record" />
+
+    <Button
+        android:id="@+id/btn_checkSubscribed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="79dp"
+        android:layout_marginBottom="22dp"
+        android:text="Check sub" />
 
 </RelativeLayout>

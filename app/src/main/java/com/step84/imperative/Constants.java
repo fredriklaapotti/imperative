@@ -50,6 +50,7 @@ final class Constants {
     public static String DATABASE_COLLECTION_ZONES_RADIUS = "radius";
 
 
+    public static boolean alreadySubscribed;
 
     static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
@@ -57,6 +58,7 @@ final class Constants {
 
     static final long GEOFENCE_EXPIRATION_IN_MILLISECONDS = GEOFENCE_EXPIRATION_IN_HOURS * 60 * 60 * 1000;
     static final ArrayList<Zone> zoneArrayList = new ArrayList<>();
+    static final ArrayList<Subscription> subscriptionArrayList = new ArrayList<>();
 
     public static Location currentLocation;
 

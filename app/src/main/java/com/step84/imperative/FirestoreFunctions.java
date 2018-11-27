@@ -26,6 +26,7 @@ import static com.step84.imperative.ZonesFragment.updateMap;
 
 public class FirestoreFunctions {
     private static final String TAG = "FirestoreFunctions";
+    private boolean isSubscribed;
 
     public interface FirestoreListener {
         public void onStart();
@@ -101,47 +102,125 @@ public class FirestoreFunctions {
         Log.i(TAG, "owl: interface: 3");
     }
 
+    public static void isSubscribed(FirebaseUser currentUser, Zone currentZone, final FirestoreListener listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        listener.onStart();
+        Log.i(TAG, "owl: interface: in isSubscribed()");
+
+        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                //.whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ACTIVE, true)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                            Log.i(TAG, "owl: interface: snapshotList = " + snapshotList.size());
+                            if(snapshotList.size() > 0) {
+                                listener.onSuccess();
+                            } else {
+                                listener.onFailed();
+                            }
+                        } else {
+                            Log.d(TAG, "owl: interface: failed to check isSubscribed()");
+                        }
+                    }
+                });
+    }
+
     public static void subscribe(FirebaseUser currentUser, Zone currentZone, final FirestoreListener listener) {
         // Subscribe
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         listener.onStart();
+        Constants.alreadySubscribed = false;
 
-        FirebaseMessaging.getInstance().subscribeToTopic(currentZone.getName())
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
+        db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_USER, currentUser.getUid())
+                .whereEqualTo(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS_ZONE, currentZone.getId())
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            Log.i(TAG, "owl: interface: successfully subscribed to topic");
-                            Subscription subscription = new Subscription();
-                            subscription.active = true;
-                            subscription.user = currentUser.getUid();
-                            subscription.zone = currentZone.getId();
-                            subscription.settings = new HashMap<>();
-                            subscription.settings.put("alarm_override_sound", false);
-                            subscription.settings.put("alarm_notice", true);
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                            Log.i(TAG, "owl: interface: snapshotList = " + snapshotList.size());
+                            if(snapshotList.size() > 0) {
+                                // User is subscribed to zone in database, snapshot is subscribed document, change it to active
+                                Constants.alreadySubscribed = true;
+                                for(DocumentSnapshot snapshot : snapshotList) {
+                                    Log.i(TAG, "owl: interface: tried to subscribe but already subscribed");
+                                    db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
+                                            .update("active", true)
+                                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<Void> task) {
+                                                    if(task.isSuccessful()) {
+                                                        Log.i(TAG, "owl: interface: subscription exists, updated active field to true and resubscribed");
+                                                        FirebaseMessaging.getInstance().subscribeToTopic(currentZone.getName())
+                                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                    @Override
+                                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                                        if(task.isSuccessful()) {
+                                                                            Log.i(TAG, "owl: interface: subscription exists, resubscribed to Firebase Messaging");
+                                                                        } else {
+                                                                            Log.i(TAG, "owl: interface: subscription exists, failed resubscribing to Firebase Messaging");
+                                                                        }
+                                                                    }
+                                                                });
+                                                    } else {
+                                                        Log.d(TAG, "owl: interface: subscription existed, failed to update active field");
+                                                    }
+                                                }
+                                            });
+                                }
+                            } else {
+                                // User is not subscribed to zone, continue with subscription
+                                Constants.alreadySubscribed = false;
 
-                            db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
-                                    .add(subscription)
-                                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                                        @Override
-                                        public void onSuccess(DocumentReference documentReference) {
-                                            Log.i(TAG, "owl: subscription added to database");
-                                            CommonFunctions.updateFromFirestore(currentUser);
-                                        }
-                                    })
-                                    .addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception e) {
-                                            Log.d(TAG, "owl: failed to add subscription to database");
-                                        }
-                                    });
-                            listener.onSuccess();
+                                FirebaseMessaging.getInstance().subscribeToTopic(currentZone.getName())
+                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> task) {
+                                                if (task.isSuccessful()) {
+                                                    Log.i(TAG, "owl: interface: successfully subscribed to topic");
+                                                    Subscription subscription = new Subscription();
+                                                    subscription.active = true;
+                                                    subscription.user = currentUser.getUid();
+                                                    subscription.zone = currentZone.getId();
+                                                    subscription.settings = new HashMap<>();
+                                                    subscription.settings.put("alarm_override_sound", false);
+                                                    subscription.settings.put("alarm_notice", true);
+
+                                                    db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS)
+                                                            .add(subscription)
+                                                            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                                @Override
+                                                                public void onSuccess(DocumentReference documentReference) {
+                                                                    Log.i(TAG, "owl: subscription added to database");
+                                                                    CommonFunctions.updateFromFirestore(currentUser);
+                                                                }
+                                                            })
+                                                            .addOnFailureListener(new OnFailureListener() {
+                                                                @Override
+                                                                public void onFailure(@NonNull Exception e) {
+                                                                    Log.d(TAG, "owl: failed to add subscription to database");
+                                                                }
+                                                            });
+                                                    listener.onSuccess();
+                                                } else {
+                                                    Log.d(TAG, "owl: interface: failed subscribeToTopic");
+                                                    listener.onFailed();
+                                                }
+                                            }
+                                        });
+                            }
                         } else {
-                            Log.d(TAG, "owl: interface: failed subscribeToTopic");
-                            listener.onFailed();
+                            Log.d(TAG, "owl: interface: failed to check isSubscribed()");
                         }
                     }
-        });
+                });
     }
 
     public static void unsubscribe(FirebaseUser currentUser, Zone currentZone, final FirestoreListener listener) {
@@ -163,10 +242,12 @@ public class FirestoreFunctions {
                                         public void onComplete(@NonNull Task<QuerySnapshot> task) {
                                             if(task.isSuccessful()) {
                                                 List<DocumentSnapshot> snapshotList = task.getResult().getDocuments();
+                                                // User
                                                 for(DocumentSnapshot snapshot : snapshotList) {
                                                     Log.i(TAG, "owl: snapshot id = " + snapshot.getId());
                                                     db.collection(Constants.DATABASE_COLLECTION_SUBSCRIPTIONS).document(snapshot.getId())
-                                                            .delete()
+                                                            //.delete()
+                                                            .update("active", false)
                                                             .addOnCompleteListener(new OnCompleteListener<Void>() {
                                                                 @Override
                                                                 public void onComplete(@NonNull Task<Void> task) {
